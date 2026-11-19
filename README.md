@@ -52,7 +52,16 @@ git push -u origin main
 ```
 Antes del push, revisa con `git status` que **no** aparezca `.env`.
 
-## Despliegue en AWS Academy (desde cero)
+## Despliegue automático en AWS Academy (recomendado)
+
+En el Learner Lab, con el laboratorio encendido (*Start Lab*, punto verde), se abre la terminal de la misma página y se ejecuta:
+```bash
+curl -sO https://raw.githubusercontent.com/FelixSiachoque/agroanalisis/main/infra/crear_infra_aws.sh
+bash crear_infra_aws.sh
+```
+El script crea el par de llaves, el security group y la instancia EC2. La instancia se configura sola en su primer arranque con `infra/user_data.sh`, que aplica el hardening, despliega la app y crea las cuentas. Las contraseñas generadas quedan en `/home/plataforma/credenciales.txt` (permisos 600).
+
+## Despliegue manual en AWS Academy (desde cero)
 
 ### 1. Crear la instancia
 1. AWS Academy → *Start Lab* → consola de AWS → **EC2** → *Launch instance*.
