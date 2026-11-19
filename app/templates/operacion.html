@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block contenido %}
+<section class="tarjeta">
+  <h1>Operación · cola de trabajos</h1>
+  <div class="fila">
+    <a href="{{ url_for('operacion') }}" class="chip {{ 'activo' if not estado }}">todos</a>
+    {% for r in resumen %}
+      <a href="{{ url_for('operacion', estado=r.estado) }}" class="chip {{ 'activo' if estado == r.estado }}">{{ r.estado }}: {{ r.n }}</a>
+    {% endfor %}
+  </div>
+  <table>
+    <tr><th>#</th><th>Dueño</th><th>Archivo</th><th>Estado</th><th>Intentos</th><th>Creado</th><th>Terminado</th><th>Error</th><th></th></tr>
+    {% for t in trabajos %}
+    <tr>
+      <td><a href="{{ url_for('detalle', trabajo_id=t.id) }}">{{ t.id }}</a></td><td>{{ t.dueno }}</td><td>{{ t.nombre_original }}</td>
+      <td><span class="estado {{ t.estado }}">{{ t.estado }}</span></td><td>{{ t.intentos }}</td>
+      <td>{{ t.creado.strftime('%H:%M:%S') }}</td><td>{{ t.terminado.strftime('%H:%M:%S') if t.terminado else '—' }}</td>
+      <td class="error-txt">{{ t.error or '' }}</td>
+      <td>{% if t.estado == 'fallido' and puede('reprocesar') %}
+        <form method="post" action="{{ url_for('reprocesar', trabajo_id=t.id) }}"><button class="mini">reprocesar</button></form>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

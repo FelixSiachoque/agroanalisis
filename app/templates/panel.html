@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block contenido %}
+<section class="tarjeta">
+  <h1>Cargar archivo para análisis</h1>
+  <p class="sutil">Formatos permitidos: <b>.txt</b> (informes) y <b>.csv</b> (resultados de laboratorio), máximo <b>{{ max_mb }} MB</b>, texto UTF-8.
+  {% if g.usuario.rol == 'usuario' %}<br>Trabajos activos: <b>{{ activos }} / {{ max_activos }}</b> (regla del laboratorio).{% endif %}</p>
+  <form method="post" action="{{ url_for('subir') }}" enctype="multipart/form-data" class="fila">
+    <input type="file" name="archivo" accept=".txt,.csv" required>
+    <button>Enviar a procesar</button>
+  </form>
+</section>
+
+<section class="tarjeta">
+  <h2>Mis trabajos <a class="sutil" href="{{ url_for('panel') }}">↻ actualizar</a></h2>
+  {% if trabajos %}
+  <table>
+    <tr><th>#</th><th>Archivo</th><th>Tipo</th><th>Tamaño</th><th>Estado</th><th>Creado</th><th></th></tr>
+    {% for t in trabajos %}
+    <tr>
+      <td>{{ t.id }}</td><td>{{ t.nombre_original }}</td><td>{{ t.tipo }}</td>
+      <td>{{ (t.tamano_bytes / 1024) | round(1) }} KB</td>
+      <td><span class="estado {{ t.estado }}">{{ t.estado }}</span></td>
+      <td>{{ t.creado.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+      <td><a href="{{ url_for('detalle', trabajo_id=t.id) }}">ver</a>
+        {% if t.estado == 'completado' %} · <a href="{{ url_for('descargar', trabajo_id=t.id) }}">descargar</a>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="sutil">Aún no tiene trabajos.</p>{% endif %}
+</section>
+{% endblock %}

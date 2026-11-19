@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block contenido %}
+<section class="tarjeta login">
+  <h1>Ingresar</h1>
+  <p class="sutil">Cada persona entra con su propia cuenta.</p>
+  <form method="post">
+    <label>Usuario <input name="usuario" required autocomplete="username" autofocus></label>
+    <label>Contraseña <input name="clave" type="password" required autocomplete="current-password"></label>
+    <button>Ingresar</button>
+  </form>
+</section>
+{% endblock %}

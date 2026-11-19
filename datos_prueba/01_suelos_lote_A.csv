@@ -1,0 +1,26 @@
+muestra,finca,cultivo,ph,materia_organica_pct,nitrogeno_ppm,fosforo_ppm,potasio_ppm
+A-0001,La Esperanza,arveja,6.41,6.87,23,19,367
+A-0002,Monquirá,haba,6.57,9.17,72,53,360
+A-0003,Pantanitos,cebolla larga,4.61,2.35,46,57,110
+A-0004,Pantanitos,papa,7.53,8.69,50,18,263
+A-0005,El Volcán,arveja,8.13,11.26,58,52,322
+A-0006,La Esperanza,pasto kikuyo,5.83,7.35,47,23,294
+A-0007,Los Alisos,pasto kikuyo,7.13,7.56,13,59,248
+A-0008,La Laguna,maíz,6.12,5.69,84,40,315
+A-0009,La Esperanza,maíz,6.42,9.38,86,36,263
+A-0010,El Volcán,maíz,6.63,11.81,75,38,72
+A-0011,San Isidro,cebolla larga,7.55,11.61,76,47,112
+A-0012,Monquirá,maíz,5.11,10.79,25,45,293
+A-0013,Pantanitos,pasto kikuyo,7.95,11.87,79,21,346
+A-0014,Monquirá,pasto kikuyo,8.19,7.26,74,49,305
+A-0015,Monquirá,maíz,5.33,10.23,11,7,136
+A-0016,Pantanitos,haba,7.94,5.28,35,21,308
+A-0017,Pantanitos,haba,7.36,6.72,65,40,399
+A-0018,El Mirador,arveja,5.74,11.13,22,33,323
+A-0019,El Volcán,maíz,7.92,3.42,64,58,305
+A-0020,La Esperanza,pasto kikuyo,5.56,6.73,22,17,270
+A-0021,Los Alisos,maíz,7.90,2.47,67,42,339
+A-0022,La Esperanza,haba,7.46,4.10,89,7,339
+A-0023,El Volcán,pasto kikuyo,7.33,5.25,10,25,400
+A-0024,Pantanitos,pasto kikuyo,7.19,2.92,38,35,361
+A-0025,Los Alisos,haba,7.75,6.80,20,31,141

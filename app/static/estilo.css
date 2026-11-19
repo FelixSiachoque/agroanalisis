@@ -1,0 +1,34 @@
+:root { --verde: #2f6b3a; --tierra: #7a5230; --fondo: #f4f1ea; --borde: #ddd6c8; --texto: #222; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--fondo); color: var(--texto); }
+header { background: var(--verde); color: #fff; padding: .8rem 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; }
+.marca { font-weight: 700; font-size: 1.2rem; } .marca span { font-weight: 400; opacity: .85; }
+nav { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+nav a { color: #fff; text-decoration: none; } nav a:hover { text-decoration: underline; }
+.quien { opacity: .9; }
+main { max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
+.tarjeta { background: #fff; border: 1px solid var(--borde); border-radius: 10px; padding: 1.2rem 1.5rem; margin-bottom: 1.2rem; }
+.login { max-width: 380px; margin: 3rem auto; }
+h1 { font-size: 1.3rem; margin-top: 0; } h2 { font-size: 1.1rem; margin-top: 0; }
+label { display: block; margin-bottom: .8rem; } label input { display: block; width: 100%; margin-top: .3rem; }
+input, select, button { font: inherit; padding: .45rem .6rem; border: 1px solid var(--borde); border-radius: 6px; }
+button, .boton { background: var(--verde); color: #fff; border: none; cursor: pointer; text-decoration: none; display: inline-block; padding: .45rem .9rem; border-radius: 6px; }
+button.peligro { background: #a33; } button.mini { padding: .2rem .5rem; font-size: .85rem; }
+button.enlace { background: none; padding: 0; color: #fff; text-decoration: underline; }
+.fila { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin: .3rem 0; }
+.fila form { margin: 0; }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--borde); vertical-align: top; }
+th { background: #faf8f3; } table.ficha th { width: 140px; }
+.sutil { color: #666; font-size: .9rem; }
+.aviso { padding: .7rem 1rem; border-radius: 8px; margin-bottom: 1rem; }
+.aviso.ok { background: #e3f1e5; border: 1px solid #9cc7a3; } .aviso.error { background: #f8e1e1; border: 1px solid #d79a9a; }
+.estado { padding: .15rem .5rem; border-radius: 10px; font-size: .8rem; font-weight: 600; }
+.pendiente { background: #fff1c2; } .en_ejecucion { background: #cfe3ff; } .completado { background: #cdebd2; } .fallido { background: #f6c9c9; }
+.rol { font-style: normal; font-size: .75rem; padding: .1rem .45rem; border-radius: 8px; background: rgba(255,255,255,.25); }
+td .rol-admin { background: #e8d5c4; } td .rol-operador { background: #d4e4f7; } td .rol-usuario { background: #e2efe0; }
+.error-txt { color: #a33; font-size: .85rem; }
+.chip { padding: .2rem .7rem; border-radius: 12px; border: 1px solid var(--borde); text-decoration: none; color: var(--texto); }
+.chip.activo { background: var(--verde); color: #fff; }
+tr.acc-acceso_denegado td, tr.acc-login_fallido td, tr.acc-cuota_excedida td { background: #fdf0f0; }
+footer { text-align: center; color: #888; font-size: .8rem; padding: 2rem 0; }

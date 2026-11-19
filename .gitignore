@@ -1,0 +1,11 @@
+# Secretos: nunca al repositorio
+.env
+*.pem
+*.key
+
+# Archivos generados
+datos_prueba/archivo_grande.txt
+evidencias/
+__pycache__/
+*.pyc
+.venv/

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block contenido %}
+<section class="tarjeta">
+  <h1>Trabajo #{{ t.id }} <span class="estado {{ t.estado }}">{{ t.estado }}</span></h1>
+  <table class="ficha">
+    <tr><th>Dueño</th><td>{{ t.dueno }}</td></tr>
+    <tr><th>Archivo</th><td>{{ t.nombre_original }} ({{ t.tipo }}, {{ t.tamano_bytes }} bytes)</td></tr>
+    <tr><th>Creado</th><td>{{ t.creado.strftime('%Y-%m-%d %H:%M:%S') }}</td></tr>
+    <tr><th>Iniciado</th><td>{{ t.iniciado.strftime('%Y-%m-%d %H:%M:%S') if t.iniciado else '—' }}</td></tr>
+    <tr><th>Terminado</th><td>{{ t.terminado.strftime('%Y-%m-%d %H:%M:%S') if t.terminado else '—' }}</td></tr>
+    <tr><th>Intentos</th><td>{{ t.intentos }}</td></tr>
+    {% if t.error %}<tr><th>Error</th><td class="error-txt">{{ t.error }}</td></tr>{% endif %}
+  </table>
+  <div class="fila">
+    {% if t.estado in ('pendiente', 'en_ejecucion') %}<a class="boton" href="">↻ Actualizar estado</a>{% endif %}
+    {% if t.estado == 'completado' %}<a class="boton" href="{{ url_for('descargar', trabajo_id=t.id) }}">Descargar resultado (JSON)</a>{% endif %}
+    {% if t.estado == 'fallido' and puede('reprocesar') %}
+      <form method="post" action="{{ url_for('reprocesar', trabajo_id=t.id) }}"><button>Reprocesar</button></form>{% endif %}
+    <form method="post" action="{{ url_for('eliminar', trabajo_id=t.id) }}"><button class="peligro">Eliminar</button></form>
+  </div>
+</section>
+{% endblock %}

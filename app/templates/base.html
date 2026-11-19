@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgroAnálisis Sugamuxi</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+</head>
+<body>
+<header>
+  <div class="marca">🌱 AgroAnálisis <span>Sugamuxi</span></div>
+  {% if g.usuario %}
+  <nav>
+    <a href="{{ url_for('panel') }}">Mis trabajos</a>
+    {% if puede('ver_todos') %}<a href="{{ url_for('operacion') }}">Operación</a>{% endif %}
+    {% if puede('gestionar_usuarios') %}<a href="{{ url_for('usuarios') }}">Usuarios</a>{% endif %}
+    {% if puede('ver_auditoria') %}<a href="{{ url_for('auditoria') }}">Auditoría</a>{% endif %}
+    <span class="quien">{{ g.usuario.usuario }} <em class="rol rol-{{ g.usuario.rol }}">{{ g.usuario.rol }}</em></span>
+    <form method="post" action="{{ url_for('logout') }}"><button class="enlace">Salir</button></form>
+  </nav>
+  {% endif %}
+</header>
+<main>
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+    <div class="aviso {{ cat }}">{{ msg }}</div>
+  {% endfor %}
+  {% block contenido %}{% endblock %}
+</main>
+<footer>Laboratorio de análisis de suelos · organización ficticia · Proyecto Sistemas Operativos UPTC 2026</footer>
+</body>
+</html>

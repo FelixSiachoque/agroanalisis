@@ -1,0 +1,97 @@
+# AgroAnálisis Sugamuxi - orquestación
+# Solo el contenedor 'proxy' publica un puerto (80). La base de datos, la app y el worker
+# quedan en redes internas de Docker y NO son accesibles desde Internet.
+
+name: agroanalisis
+
+services:
+
+  proxy:                                  # Proxy inverso: única puerta de entrada
+    image: nginxinc/nginx-unprivileged:1.27-alpine   # nginx que corre sin root (UID 101)
+    ports:
+      - "80:8080"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [frontend]
+    depends_on:
+      app:
+        condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    restart: unless-stopped
+
+  app:                                    # Aplicación web / API (Flask + Gunicorn)
+    build: ./app
+    env_file: .env
+    environment:
+      DB_HOST: db
+    volumes:
+      - datos:/data
+    networks: [frontend, backend]
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true                       # sistema de archivos del contenedor en solo lectura
+    tmpfs: [/tmp]
+    cap_drop: [ALL]                       # sin capacidades especiales del kernel
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  worker:                                 # Trabajador de procesamiento asíncrono
+    build: ./worker
+    env_file: .env
+    environment:
+      DB_HOST: db
+    volumes:
+      - datos:/data
+    networks: [backend]                   # sin salida a Internet
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m                       # LÍMITE DE RECURSOS: un archivo pesado no tumba el servidor
+    cpus: 0.5
+    pids_limit: 50
+    restart: unless-stopped
+
+  db:                                     # PostgreSQL: usuarios, trabajos y auditoría
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    networks: [backend]                   # sin "ports": NO expuesto fuera de Docker
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  frontend: {}                            # proxy <-> app
+  backend:
+    internal: true                        # app <-> worker <-> db, sin acceso a Internet
+
+volumes:
+  db_data: {}                             # datos de PostgreSQL (persisten al reiniciar)
+  datos: {}                               # archivos originales y resultados (/data)
