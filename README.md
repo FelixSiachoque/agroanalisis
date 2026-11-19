@@ -39,6 +39,7 @@ scripts/        generar_env.sh, crear_usuarios_demo.sh, evidencias.sh
 pruebas/        pruebas_funcionales.py (27 pruebas), prueba_carga.py
 datos_prueba/   Carga de prueba propia (5 válidos + 4 inválidos)
 RETOS.md        Guía para resolver los retos sorpresa
+GUIA_EQUIPO.md  Cómo probar todo en tu computador (para el equipo)
 ```
 
 ## Subir el código a GitHub (una vez)
