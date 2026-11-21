@@ -71,6 +71,27 @@ escribir("08_invalido_binario.txt", bytes([0x89, 0x50, 0x4E, 0x47, 0x00, 0x00, 0
 # 9. Archivo de 3 MB (supera el límite de 2 MB): la app lo RECHAZA. No se versiona (está en .gitignore).
 escribir("archivo_grande.txt", ("x" * 99 + "\n") * 31000)
 
+# --- Sello de autenticidad (cadena de custodia) ---
+# 9. CSV que se sube y luego se MANIPULA dentro del volumen /data para demostrar que el worker
+#    lo detecta (integridad_comprometida). Ver README, sección "Sello de autenticidad".
+escribir("09_sello_manipular.csv", suelos(400, "S"))
+
+# --- Reglas de negocio ALTERNATIVAS: un archivo que la cumple y otro que la viola ---
+# cabecera_csv_obligatoria (cabecera exacta lote_id,fecha,medicion)
+medicion = ["lote_id,fecha,medicion"]
+for i in range(1, 31):
+    medicion.append(f"L-{random.randint(1, 6):02d},2026-{random.randint(1, 10):02d}-{random.randint(1, 28):02d},"
+                    f"{random.uniform(4.8, 7.9):.2f}")
+escribir("10_regla_cabecera_cumple.csv", "\n".join(medicion) + "\n")
+escribir("11_regla_cabecera_viola.csv", "lote,fecha_muestra,valor\nL-01,2026-03-01,6.20\nL-02,2026-03-02,5.90\n")
+# rangos_agronomicos_validos (pH entre 0 y 14, porcentajes entre 0 y 100)
+escribir("12_regla_rangos_cumple.csv", suelos(20, "R"))
+rangos = suelos(20, "X").splitlines()
+rangos[7] = "X-0007,El Volcán,papa,15.30,4.10,40,20,150"          # pH imposible
+escribir("13_regla_rangos_viola.csv", "\n".join(rangos) + "\n")
+# tamano_maximo_por_rol (agricultor: máx. 1 MB). 1,5 MB: cabe en los 2 MB generales. No se versiona.
+escribir("14_regla_tamano_viola.txt", ("informe de campo sin novedad " * 3 + "\n") * 17000)
+
 for f in sorted(os.listdir(D)):
     if f != "generar_datos.py" and not f.endswith(".md"):
         print(f"{f:32s} {os.path.getsize(os.path.join(D, f)):>10,d} bytes")

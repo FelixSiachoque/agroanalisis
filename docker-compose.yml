@@ -1,8 +1,38 @@
 # AgroAnálisis Sugamuxi - orquestación
 # Solo el contenedor 'proxy' publica un puerto (80). La base de datos, la app y el worker
 # quedan en redes internas de Docker y NO son accesibles desde Internet.
+#
+# SECRETOS: app y worker NO reciben el .env completo; solo las variables que necesitan.
+# En particular, ninguno recibe POSTGRES_PASSWORD (la del superusuario de la base de datos):
+# cada uno se conecta con su propio usuario de mínimo privilegio (agro_web / agro_worker).
 
 name: agroanalisis
+
+# Variables comunes de la app (parámetros de reglas de negocio incluidos).
+x-entorno-app: &entorno-app
+  POSTGRES_DB: ${POSTGRES_DB}
+  DB_HOST: db
+  DB_USER: agro_web
+  DB_PASSWORD: ${APP_DB_PASSWORD:?Falta APP_DB_PASSWORD en .env (ver scripts/aplicar_migraciones.sh)}
+  SECRET_KEY: ${SECRET_KEY}
+  ADMIN_USER: ${ADMIN_USER:-coordinador}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+  DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+  COOKIE_SECURE: ${COOKIE_SECURE:-0}
+  MAX_MB: ${MAX_MB:-2}
+  LATIDO_CADUCO_S: ${LATIDO_CADUCO_S:-60}
+  # Reglas de negocio: parámetros y encendido/apagado sin reconstruir (vacío = valor de reglas_negocio.py)
+  MAX_ACTIVOS_USUARIO: ${MAX_ACTIVOS_USUARIO:-3}
+  CABECERA_CSV: ${CABECERA_CSV:-}
+  REGLA_CUOTA_TRABAJOS_ACTIVOS: ${REGLA_CUOTA_TRABAJOS_ACTIVOS:-}
+  REGLA_BLOQUEAR_BORRADO_FINALIZADOS: ${REGLA_BLOQUEAR_BORRADO_FINALIZADOS:-}
+  REGLA_CABECERA_CSV_OBLIGATORIA: ${REGLA_CABECERA_CSV_OBLIGATORIA:-}
+  REGLA_RANGOS_AGRONOMICOS_VALIDOS: ${REGLA_RANGOS_AGRONOMICOS_VALIDOS:-}
+  REGLA_TAMANO_MAXIMO_POR_ROL: ${REGLA_TAMANO_MAXIMO_POR_ROL:-}
+  REGLA_VENTANA_RECEPCION: ${REGLA_VENTANA_RECEPCION:-}
+  REGLA_BLOQUEAR_DESCARGA_ORIGINALES_AJENOS: ${REGLA_BLOQUEAR_DESCARGA_ORIGINALES_AJENOS:-}
+  REGLA_TRABAJOS_CONFIDENCIALES: ${REGLA_TRABAJOS_CONFIDENCIALES:-}
+  REGLA_LIMITE_REPROCESOS: ${REGLA_LIMITE_REPROCESOS:-}
 
 services:
 
@@ -25,9 +55,7 @@ services:
 
   app:                                    # Aplicación web / API (Flask + Gunicorn)
     build: ./app
-    env_file: .env
-    environment:
-      DB_HOST: db
+    environment: *entorno-app
     volumes:
       - datos:/data
     networks: [frontend, backend]
@@ -50,9 +78,15 @@ services:
 
   worker:                                 # Trabajador de procesamiento asíncrono
     build: ./worker
-    env_file: .env
     environment:
+      POSTGRES_DB: ${POSTGRES_DB}
       DB_HOST: db
+      DB_USER: agro_worker
+      DB_PASSWORD: ${WORKER_DB_PASSWORD:?Falta WORKER_DB_PASSWORD en .env (ver scripts/aplicar_migraciones.sh)}
+      PROCESAMIENTO_DEMORA_S: ${PROCESAMIENTO_DEMORA_S:-3}
+      MAX_INTENTOS: ${MAX_INTENTOS:-3}
+      TIMEOUT_TRABAJO_S: ${TIMEOUT_TRABAJO_S:-120}
+      LATIDO_CADUCO_S: ${LATIDO_CADUCO_S:-60}
     volumes:
       - datos:/data
     networks: [backend]                   # sin salida a Internet
@@ -72,11 +106,15 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USER}            # superusuario: solo para esquema y migraciones
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}        # para crear agro_web (db/02_roles.sh)
+      WORKER_DB_PASSWORD: ${WORKER_DB_PASSWORD}  # para crear agro_worker
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - ./db/02_roles.sh:/docker-entrypoint-initdb.d/02_roles.sh:ro
+      - ./db/roles.sql:/srv/db/roles.sql:ro
     networks: [backend]                   # sin "ports": NO expuesto fuera de Docker
     security_opt: ["no-new-privileges:true"]
     mem_limit: 512m

@@ -5,6 +5,7 @@
 
 # Archivos generados
 datos_prueba/archivo_grande.txt
+datos_prueba/14_regla_tamano_viola.txt
 evidencias/
 __pycache__/
 *.pyc

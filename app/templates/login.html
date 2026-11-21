@@ -4,6 +4,7 @@
   <h1>Ingresar</h1>
   <p class="sutil">Cada persona entra con su propia cuenta.</p>
   <form method="post">
+    {{ csrf_campo() }}
     <label>Usuario <input name="usuario" required autocomplete="username" autofocus></label>
     <label>Contraseña <input name="clave" type="password" required autocomplete="current-password"></label>
     <button>Ingresar</button>

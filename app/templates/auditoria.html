@@ -3,20 +3,24 @@
 <section class="tarjeta">
   <h1>Auditoría · quién hizo qué y cuándo</h1>
   <form method="get" class="fila">
-    <input name="usuario" placeholder="filtrar por usuario" value="{{ fu }}">
-    <select name="accion">
+    <input name="usuario" placeholder="usuario" value="{{ f.usuario }}" aria-label="Usuario">
+    <select name="accion" aria-label="Acción">
       <option value="">todas las acciones</option>
-      {% for a in acciones %}<option value="{{ a.accion }}" {{ 'selected' if a.accion == fa }}>{{ a.accion }} ({{ a.n }})</option>{% endfor %}
+      {% for a in acciones %}<option value="{{ a.accion }}" {{ 'selected' if a.accion == f.accion }}>{{ a.accion }} ({{ a.n }})</option>{% endfor %}
     </select>
+    <select name="resultado" aria-label="Resultado"><option value="">todos</option>
+      {% for r in resultados %}<option {{ 'selected' if r == f.resultado }}>{{ r }}</option>{% endfor %}</select>
+    <input type="date" name="desde" value="{{ f.desde }}" aria-label="Desde">
+    <input type="date" name="hasta" value="{{ f.hasta }}" aria-label="Hasta">
     <button>Filtrar</button>
-    <a class="boton" href="{{ url_for('auditoria_csv', usuario=fu, accion=fa) }}">⬇ Exportar reporte CSV</a>
+    <a class="boton" href="{{ url_for('auditoria_csv', **f) }}">Exportar reporte CSV</a>
   </form>
   <table>
-    <tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th><th>IP</th></tr>
+    <tr><th>#</th><th>Fecha</th><th>Usuario</th><th>Rol</th><th>Acción</th><th>Recurso</th><th>Resultado</th><th>Detalle</th><th>IP</th></tr>
     {% for e in eventos %}
-    <tr class="acc-{{ e.accion }}">
-      <td>{{ e.fecha.strftime('%Y-%m-%d %H:%M:%S') }}</td><td>{{ e.usuario }}</td>
-      <td><code>{{ e.accion }}</code></td><td>{{ e.detalle }}</td><td>{{ e.ip or '' }}</td>
+    <tr class="res-{{ e.resultado }}">
+      <td>{{ e.id }}</td><td>{{ e.fecha.strftime('%Y-%m-%d %H:%M:%S') }}</td><td>{{ e.usuario }}</td><td>{{ e.rol or '' }}</td>
+      <td><code>{{ e.accion }}</code></td><td>{{ e.recurso or '' }}</td><td>{{ e.resultado }}</td><td>{{ e.detalle }}</td><td>{{ e.ip or '' }}</td>
     </tr>
     {% endfor %}
   </table>

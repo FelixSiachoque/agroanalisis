@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block contenido %}
+<section class="tarjeta">
+  <h1>Reglas de negocio del laboratorio</h1>
+  <p class="sutil">Solo lectura. Se configuran en <code>app/reglas_negocio.py</code> o con <code>REGLA_&lt;NOMBRE&gt;=1</code> en el .env.</p>
+  <table>
+    <tr><th>Regla</th><th>Estado</th><th>Cuándo actúa</th><th>Qué hace</th><th>Parámetros</th></tr>
+    {% for r in reglas %}
+    <tr>
+      <td><code>{{ r.nombre }}</code></td>
+      <td>{{ 'activa' if r.activa else 'inactiva' }}</td>
+      <td>{{ r.enganche }}</td><td>{{ r.descripcion }}</td>
+      <td>{% for k, v in r.parametros.items() %}<code>{{ k }}={{ v }}</code> {% endfor %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

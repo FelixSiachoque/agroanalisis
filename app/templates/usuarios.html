@@ -3,7 +3,7 @@
 <section class="tarjeta">
   <h1>Crear usuario</h1>
   <form method="post" class="fila">
-    <input type="hidden" name="accion" value="crear">
+    {{ csrf_campo() }}<input type="hidden" name="accion" value="crear">
     <input name="usuario" placeholder="usuario (alfanumérico)" required>
     <input name="clave" type="password" placeholder="contraseña (mín. 8)" required minlength="8">
     <select name="rol">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == 'usuario' }}>{{ r }}</option>{% endfor %}</select>
@@ -21,12 +21,12 @@
       <td class="fila">
         {% if u.id != g.usuario.id %}
         <form method="post" class="fila">
-          <input type="hidden" name="accion" value="cambiar_rol"><input type="hidden" name="id" value="{{ u.id }}">
+          {{ csrf_campo() }}<input type="hidden" name="accion" value="cambiar_rol"><input type="hidden" name="id" value="{{ u.id }}">
           <select name="rol">{% for r in roles %}<option {{ 'selected' if r == u.rol }}>{{ r }}</option>{% endfor %}</select>
           <button class="mini">cambiar rol</button>
         </form>
         <form method="post">
-          <input type="hidden" name="accion" value="{{ 'desactivar' if u.activo else 'activar' }}"><input type="hidden" name="id" value="{{ u.id }}">
+          {{ csrf_campo() }}<input type="hidden" name="accion" value="{{ 'desactivar' if u.activo else 'activar' }}"><input type="hidden" name="id" value="{{ u.id }}">
           <button class="mini">{{ 'desactivar' if u.activo else 'activar' }}</button>
         </form>
         {% else %}<span class="sutil">(su cuenta)</span>{% endif %}

@@ -15,6 +15,8 @@ ADMIN=$(aleatorio 16)
 DEMO=$(aleatorio 12)
 
 sed -e "s/CAMBIAR_DB/$(aleatorio 24)/" \
+    -e "s/CAMBIAR_APPDB/$(aleatorio 24)/" \
+    -e "s/CAMBIAR_WORKERDB/$(aleatorio 24)/" \
     -e "s/CAMBIAR_SECRET/$(aleatorio 48)/" \
     -e "s/CAMBIAR_ADMIN/$ADMIN/" \
     -e "s/CAMBIAR_DEMO/$DEMO/" \

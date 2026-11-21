@@ -17,7 +17,7 @@
       <td>{{ t.creado.strftime('%H:%M:%S') }}</td><td>{{ t.terminado.strftime('%H:%M:%S') if t.terminado else '—' }}</td>
       <td class="error-txt">{{ t.error or '' }}</td>
       <td>{% if t.estado == 'fallido' and puede('reprocesar') %}
-        <form method="post" action="{{ url_for('reprocesar', trabajo_id=t.id) }}"><button class="mini">reprocesar</button></form>{% endif %}</td>
+        <form method="post" action="{{ url_for('reprocesar', trabajo_id=t.id) }}">{{ csrf_campo() }}<input type="hidden" name="volver" value="operacion"><button class="mini">reprocesar</button></form>{% endif %}</td>
     </tr>
     {% endfor %}
   </table>

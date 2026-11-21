@@ -1,17 +1,22 @@
 {% extends "base.html" %}
 {% block contenido %}
+{% if error %}<div class="aviso error" role="alert">{{ error }}</div>{% endif %}
 <section class="tarjeta">
   <h1>Cargar archivo para análisis</h1>
   <p class="sutil">Formatos permitidos: <b>.txt</b> (informes) y <b>.csv</b> (resultados de laboratorio), máximo <b>{{ max_mb }} MB</b>, texto UTF-8.
-  {% if g.usuario.rol == 'usuario' %}<br>Trabajos activos: <b>{{ activos }} / {{ max_activos }}</b> (regla del laboratorio).{% endif %}</p>
+  {% if cabecera %}<br>El CSV debe empezar con la cabecera <code>{{ cabecera }}</code>.{% endif %}
+  {% if cuota_aplica %}<br>Trabajos activos: <b>{{ activos }} / {{ max_activos }}</b> (regla del laboratorio).{% endif %}</p>
   <form method="post" action="{{ url_for('subir') }}" enctype="multipart/form-data" class="fila">
+    {{ csrf_campo() }}
     <input type="file" name="archivo" accept=".txt,.csv" required>
+    {% if confidencial_disponible %}<label><input type="checkbox" name="confidencial" value="1"> Confidencial</label>{% endif %}
     <button>Enviar a procesar</button>
   </form>
+  {% if reglas %}<h2>Reglas vigentes del laboratorio</h2><ul>{% for r in reglas %}<li>{{ r.descripcion }}</li>{% endfor %}</ul>{% endif %}
 </section>
 
 <section class="tarjeta">
-  <h2>Mis trabajos <a class="sutil" href="{{ url_for('panel') }}">↻ actualizar</a></h2>
+  <h2>Mis trabajos <a class="sutil" href="{{ url_for('panel') }}">actualizar</a></h2>
   {% if trabajos %}
   <table>
     <tr><th>#</th><th>Archivo</th><th>Tipo</th><th>Tamaño</th><th>Estado</th><th>Creado</th><th></th></tr>

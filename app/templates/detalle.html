@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block contenido %}
+{% if error %}<div class="aviso error" role="alert">{{ error }}</div>{% endif %}
 <section class="tarjeta">
   <h1>Trabajo #{{ t.id }} <span class="estado {{ t.estado }}">{{ t.estado }}</span></h1>
   <table class="ficha">
@@ -11,12 +12,15 @@
     <tr><th>Intentos</th><td>{{ t.intentos }}</td></tr>
     {% if t.error %}<tr><th>Error</th><td class="error-txt">{{ t.error }}</td></tr>{% endif %}
   </table>
+  {% set es_dueno = t.usuario_id == g.usuario.id %}
   <div class="fila">
-    {% if t.estado in ('pendiente', 'en_ejecucion') %}<a class="boton" href="">↻ Actualizar estado</a>{% endif %}
-    {% if t.estado == 'completado' %}<a class="boton" href="{{ url_for('descargar', trabajo_id=t.id) }}">Descargar resultado (JSON)</a>{% endif %}
+    {% if t.estado in ('pendiente', 'en_ejecucion') %}<a class="boton" href="">Actualizar estado</a>{% endif %}
+    {% if t.estado == 'completado' and (es_dueno or puede('descargar_todos')) %}<a class="boton" href="{{ url_for('descargar', trabajo_id=t.id) }}">Descargar resultado (JSON)</a>{% endif %}
+    {% if es_dueno or puede('descargar_todos') %}<a class="boton" href="{{ url_for('descargar_original', trabajo_id=t.id) }}">Descargar original</a>{% endif %}
     {% if t.estado == 'fallido' and puede('reprocesar') %}
-      <form method="post" action="{{ url_for('reprocesar', trabajo_id=t.id) }}"><button>Reprocesar</button></form>{% endif %}
-    <form method="post" action="{{ url_for('eliminar', trabajo_id=t.id) }}"><button class="peligro">Eliminar</button></form>
+      <form method="post" action="{{ url_for('reprocesar', trabajo_id=t.id) }}">{{ csrf_campo() }}<button>Reprocesar</button></form>{% endif %}
+    {% if es_dueno or puede('eliminar_cualquiera') %}
+      <form method="post" action="{{ url_for('eliminar', trabajo_id=t.id) }}">{{ csrf_campo() }}<button class="peligro">Eliminar</button></form>{% endif %}
   </div>
 </section>
 {% endblock %}
