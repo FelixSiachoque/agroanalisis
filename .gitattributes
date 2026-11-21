@@ -1,0 +1,4 @@
+# Forzar finales de línea LF (los .sh deben funcionar en Ubuntu aunque se editen en Windows)
+* text=auto eol=lf
+*.png binary
+*.exe binary

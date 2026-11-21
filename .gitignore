@@ -9,3 +9,10 @@ evidencias/
 __pycache__/
 *.pyc
 .venv/
+
+# Resultados locales de pruebas y capturas
+resultados/
+*.log
+.vscode/
+.idea/
+*.zip
