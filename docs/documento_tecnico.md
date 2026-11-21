@@ -143,12 +143,12 @@ Proyecto final de Sistemas Operativos · Mgtr. Fredy Alarcón · UPTC Seccional 
 | Unitarias de reglas de negocio (cada regla activa e inactiva) | `python -m unittest pruebas/test_reglas_negocio.py` | 26/26 |
 | Equivalencia del esquema: `init.sql` vs. esquema anterior + migraciones (dos veces) | `bash pruebas/test_esquema.sh` | idéntico (esquema y permisos) |
 | Funcionales y de seguridad: login, CSRF, roles, archivos, estados, IDOR en 6 rutas, reprocesar, reglas, auditoría y sello | `python pruebas/pruebas_funcionales.py http://localhost --docker` | 67/67 |
-| Las mismas, con todas las reglas apagadas y con `cabecera_csv_obligatoria` activa | idem, con `REGLA_…` en `.env` | 62/62 y 69/69 |
+| Las mismas, con todas las reglas apagadas y con `cabecera_csv_obligatoria` activa | idem, con `REGLA_…` en `.env` | 63/63 y 69/69 |
 | Reinicio y recuperación: `kill` del worker a mitad de un trabajo | incluida en `--docker` | recuperado, completado con 2 intentos |
-| Carga: 30 trabajos (≈1,5 MB), concurrencia 4, 1 worker | `python pruebas/prueba_carga.py http://localhost --trabajos 30 --concurrencia 4` | 30/30 completados en 96,4 s, **18,7 trabajos/min**, 3,03 s de proceso promedio |
+| Carga: 30 trabajos (≈1,5 MB), concurrencia 4, 1 worker | `python pruebas/prueba_carga.py http://localhost --trabajos 30 --concurrencia 4` | 30/30 completados en 95,7 s, **18,8 trabajos/min**, 3,04 s de proceso promedio |
 | Carga con 2 workers (`--scale worker=2`) | idem | 30/30 en 50,2 s, **35,9 trabajos/min**; reparto 15/15 sin duplicados |
 
-**Interpretación de la carga.** Cada trabajo incluye una pausa fija de 3 s (`PROCESAMIENTO_DEMORA_S`) para poder mostrar el estado "en ejecución" en la demo. Por eso un worker procesa unos 20 trabajos por minuto, y el tiempo de cola crece linealmente con la cantidad enviada (promedio de 47,7 s con 30 en cola). Duplicar los workers duplicó el throughput y redujo a la mitad el tiempo en el sistema. Esto confirma que el cuello de botella es el procesamiento y no la app ni la base de datos. Durante la prueba, el worker usó unos 27 MB de 256 MB y la app unos 85 MB de 256 MB, así que hay margen para archivos de 2 MB.
+**Interpretación de la carga.** Cada trabajo incluye una pausa fija de 3 s (`PROCESAMIENTO_DEMORA_S`) para poder mostrar el estado "en ejecución" en la demo. Por eso un worker procesa unos 20 trabajos por minuto, y el tiempo de cola crece linealmente con la cantidad enviada (promedio de 47,3 s con 30 en cola). Duplicar los workers duplicó el throughput y redujo a la mitad el tiempo en el sistema. Esto confirma que el cuello de botella es el procesamiento y no la app ni la base de datos. Durante la prueba, el worker usó unos 27 MB de 256 MB, la app unos 83 MB de 256 MB y PostgreSQL unos 50 MB de 256 MB, así que hay margen para archivos de 2 MB.
 
 ## 9. Sello de autenticidad
 
