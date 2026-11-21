@@ -43,6 +43,20 @@ for vuelta in 1 2; do
   psql_en "$B" < db/roles.sql
 done
 
+# Los eventos viejos deben quedar encadenados y la cabeza apuntando al último
+malos=$(docker exec "$B" psql -U agro_admin -d agroanalisis -Atc "
+  SELECT count(*) FROM auditoria a
+   WHERE a.hash <> auditoria_calcular_hash(a.seq, a.hash_anterior, a.fecha, a.usuario, a.rol, a.accion,
+                                           a.recurso, a.resultado, a.detalle, a.ip, a.origen)
+      OR a.hash_anterior <> coalesce((SELECT p.hash FROM auditoria p WHERE p.seq = a.seq - 1), repeat('0', 64));
+  ")
+cabeza=$(docker exec "$B" psql -U agro_admin -d agroanalisis -Atc \
+  "SELECT (SELECT seq FROM auditoria_cabeza) = (SELECT max(seq) FROM auditoria)")
+if [ "$malos" != "0" ] || [ "$cabeza" != "t" ]; then
+  echo "FALLA: la migración no encadenó bien los eventos existentes (malos=$malos cabeza=$cabeza)"; exit 1
+fi
+echo "OK: eventos existentes encadenados por la migración"
+
 volcar() { docker exec "$1" pg_dump -U agro_admin -d agroanalisis --schema-only --no-owner | grep -v -E '^--|^$|^SET |^SELECT pg_catalog|^.(un)?restrict '; }   # \restrict: token aleatorio de pg_dump
 volcar "$A" > "$TMP/a.sql"
 volcar "$B" > "$TMP/b.sql"

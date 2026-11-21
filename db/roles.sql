@@ -37,12 +37,13 @@ GRANT UPDATE (estado, error, intentos, disponible_desde, reprocesos, worker, lat
                                      ON trabajos  TO agro_web;   -- solo lo necesario para reprocesar
 GRANT SELECT, INSERT                 ON auditoria TO agro_web;   -- SIN UPDATE / DELETE / TRUNCATE
 GRANT SELECT                         ON workers   TO agro_web;   -- panel de Recursos
+GRANT SELECT                         ON auditoria_cabeza TO agro_web; -- verificar la cadena (sello)
 GRANT USAGE ON SEQUENCE usuarios_id_seq, trabajos_id_seq, auditoria_id_seq TO agro_web;
 
 -- 4. Worker: no toca la tabla de usuarios
 GRANT SELECT                         ON trabajos  TO agro_worker;
 GRANT UPDATE (estado, iniciado, terminado, intentos, ruta_resultado, error,
-              worker, latido, disponible_desde)
+              worker, latido, disponible_desde, sha256_resultado)
                                      ON trabajos  TO agro_worker; -- FOR UPDATE necesita privilegio UPDATE
 GRANT INSERT                         ON auditoria TO agro_worker; -- SIN SELECT / UPDATE / DELETE
 GRANT SELECT, INSERT, UPDATE         ON workers   TO agro_worker;

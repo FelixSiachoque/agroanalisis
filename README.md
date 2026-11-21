@@ -131,6 +131,33 @@ Para reunir todas las evidencias del checklist en un archivo, entrar como `ubunt
 cd /opt/agroanalisis && sudo ./scripts/evidencias.sh
 ```
 
+## Sello de autenticidad: cadena de custodia de muestras
+
+El laboratorio responde por cada muestra desde que llega hasta que entrega el resultado. Esto se garantiza de dos formas, y ninguna depende de la regla de negocio que esté activa:
+
+1. **Integridad de cada archivo.** La app calcula el SHA-256 del archivo al recibirlo y lo guarda en `trabajos.sha256_original`. El worker lo recalcula justo antes de procesar y otra vez con lo que realmente leyó. Si alguien cambió el archivo dentro del volumen `/data`, el trabajo queda `fallido` con el motivo `integridad_comprometida`, no se procesa y se audita. El resultado guarda su propio hash (`sha256_resultado`) y la app no entrega un archivo cuyo hash ya no coincide. Ambos hashes aparecen en el detalle del trabajo como **comprobante de custodia**.
+2. **Auditoría inalterable y encadenada.** Cada evento guarda `hash_anterior` y `hash = SHA-256(seq, hash_anterior, fecha UTC, usuario, rol, acción, recurso, resultado, detalle, ip, origen)`. Lo calcula PostgreSQL con un trigger (`auditoria_encadenar`), no la app. La fila única `auditoria_cabeza` serializa los INSERT de los dos procesos de Gunicorn y del worker. Otro trigger (`auditoria_solo_insercion`) prohíbe UPDATE, DELETE y TRUNCATE, y además el usuario de la app (`agro_web`) no tiene esos permisos.
+
+**Verificar:** `/admin/auditoria/verificar` (botón *Verificar cadena* en Auditoría) o `docker compose exec app flask --app app verificar-cadena`. Responde "Cadena íntegra: N eventos" o "Cadena ROTA en el evento #id". La propia verificación también se audita.
+
+**Demo en un minuto** (en el servidor, desde `/opt/agroanalisis`):
+```bash
+# 1. Nadie puede modificar la auditoría: ni la app (permiso denegado) ni el superusuario (trigger)
+./scripts/demo_sello.sh intentar-modificar
+
+# 2. Un superusuario malintencionado desactiva el trigger y altera un evento viejo (por ejemplo, el #7)
+./scripts/demo_sello.sh alterar 7
+./scripts/demo_sello.sh verificar          # -> Cadena ROTA en el evento #7 ... su contenido fue modificado
+./scripts/demo_sello.sh restaurar 7        # deshace la alteración -> la cadena vuelve a ser íntegra
+
+# 3. Alguien modifica un archivo ya subido dentro del volumen
+docker compose stop worker                 # para que el trabajo quede pendiente
+#    subir datos_prueba/09_sello_manipular.csv desde la web y anotar el número de trabajo (ej. 15)
+./scripts/demo_sello.sh manipular 15
+docker compose start worker                # -> el trabajo 15 queda "fallido: integridad_comprometida"
+```
+Las pruebas automáticas del sello se ejecutan con `python3 pruebas/pruebas_funcionales.py http://localhost --docker`.
+
 ## Seguridad (resumen)
 
 - Las contraseñas se guardan como hash **scrypt** (werkzeug). Los secretos solo viven en `.env`, que no se versiona y tiene permisos 600.

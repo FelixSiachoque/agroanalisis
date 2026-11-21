@@ -1,15 +1,15 @@
-"""Rutas del coordinador (admin): usuarios, auditoría y reglas de negocio."""
+"""Rutas del coordinador (admin): usuarios, auditoría, verificación del sello y reglas de negocio."""
 import csv
 import io
 from datetime import date
 
 import psycopg
-from flask import Response, abort, flash, g, redirect, render_template, request, url_for
+from flask import Response, abort, flash, g, jsonify, redirect, render_template, request, url_for
 from werkzeug.security import generate_password_hash
 
 import reglas_negocio
 from app import app
-from auditoria import auditar
+from auditoria import auditar, texto_verificacion, verificar_cadena
 from db import consulta
 from permisos import PERMISOS, ROLES
 from seguridad import requiere
@@ -140,7 +140,8 @@ def auditoria():
     return render_template("auditoria.html", eventos=eventos, f=f, acciones=acciones, resultados=RESULTADOS)
 
 
-COLUMNAS_CSV = ["id", "fecha", "usuario", "rol", "accion", "recurso", "resultado", "detalle", "ip", "origen"]
+COLUMNAS_CSV = ["id", "seq", "fecha", "usuario", "rol", "accion", "recurso", "resultado", "detalle", "ip",
+                "origen", "hash_anterior", "hash"]
 
 
 @app.get("/admin/auditoria.csv")
@@ -165,3 +166,25 @@ def auditoria_csv():
 @requiere("ver_auditoria")
 def reglas():
     return render_template("reglas.html", reglas=reglas_negocio.reglas_vigentes())
+
+
+# ---------------------------------------------------------------- sello: verificar la cadena de auditoría
+def verificar_y_auditar():
+    r = verificar_cadena()
+    auditar("verificar_cadena", texto_verificacion(r), recurso="auditoria",
+            resultado="permitido" if r["integra"] else "error")
+    return r
+
+
+@app.get("/admin/auditoria/verificar")
+@requiere("ver_auditoria")
+def verificar_auditoria():
+    r = verificar_y_auditar()
+    return render_template("verificar.html", r=r, texto=texto_verificacion(r))
+
+
+@app.get("/api/auditoria/verificar")
+@requiere("ver_auditoria")
+def api_verificar_auditoria():
+    r = verificar_y_auditar()
+    return jsonify(dict(r, mensaje=texto_verificacion(r)))

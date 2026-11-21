@@ -18,6 +18,7 @@ Robustez:
   - Reintentos limitados: un trabajo interrumpido MAX_INTENTOS veces pasa a 'fallido'
     (evita el bucle infinito de un archivo que tumba al worker una y otra vez).
 """
+import hashlib
 import json
 import logging
 import multiprocessing
@@ -190,6 +191,34 @@ def ejecutar_con_limite(con, t):
     return ("error", f"El proceso de análisis terminó inesperadamente (código {hijo.exitcode}).")
 
 
+def huella(ruta):
+    h = hashlib.sha256()
+    with open(ruta, "rb") as f:
+        for bloque in iter(lambda: f.read(65536), b""):
+            h.update(bloque)
+    return h.hexdigest()
+
+
+def verificar_custodia(t):
+    """
+    SELLO DE AUTENTICIDAD - cadena de custodia del archivo.
+    La app guardó el SHA-256 del archivo al recibirlo (sha256_original). Justo antes de procesar,
+    el worker lo recalcula: si no coincide, alguien modificó el archivo dentro del volumen /data
+    y el trabajo NO se procesa. Devuelve None si todo está bien o el mensaje de error.
+    """
+    esperado = t.get("sha256_original")
+    if not esperado:                       # trabajos creados antes de existir el sello
+        return None
+    try:
+        actual = huella(dentro_de_data(t["ruta_archivo"]))
+    except FileNotFoundError:
+        return None                        # lo reporta el procesamiento ("archivo no disponible")
+    if actual != esperado:
+        return (f"integridad_comprometida: el archivo fue modificado después de recibirse "
+                f"(SHA-256 registrado {esperado[:12]}..., actual {actual[:12]}...). No se procesó.")
+    return None
+
+
 def guardar_resultado(t, resultado):
     carpeta = os.path.join(DATA_DIR, "results", str(t["usuario_id"]))
     os.makedirs(carpeta, mode=0o700, exist_ok=True)
@@ -197,7 +226,7 @@ def guardar_resultado(t, resultado):
     with open(ruta, "w", encoding="utf-8") as f:
         json.dump(resultado, f, ensure_ascii=False, indent=2)
     os.chmod(ruta, 0o600)
-    return ruta
+    return ruta, huella(ruta)
 
 
 def procesar(con, t):
@@ -207,29 +236,43 @@ def procesar(con, t):
     recurso = f"trabajo:{t['id']}"
     try:
         time.sleep(DEMORA)
-        estado, contenido = ejecutar_con_limite(con, t)
+        error_custodia = verificar_custodia(t)              # 1.ª verificación: ANTES de procesar
+        if error_custodia:
+            estado, contenido = "error", error_custodia
+        else:
+            estado, contenido = ejecutar_con_limite(con, t)
+            # 2.ª verificación: el procesador calcula el SHA-256 de lo que REALMENTE leyó
+            if estado == "ok" and t.get("sha256_original") and contenido.get("sha256") != t["sha256_original"]:
+                estado, contenido = "error", ("integridad_comprometida: el archivo cambió durante el "
+                                              "procesamiento. No se entrega resultado.")
     except PermissionError as e:
         estado, contenido = "error", "Ruta del archivo no válida."
         log.error("Trabajo %s: %s", t["id"], e)
 
     if estado == "ok":
         contenido.update({"trabajo": t["id"], "archivo": t["nombre_original"],
-                          "procesado_por": NOMBRE, "duracion_s": round(time.monotonic() - inicio, 3)})
-        ruta = guardar_resultado(t, contenido)
+                          "procesado_por": NOMBRE, "duracion_s": round(time.monotonic() - inicio, 3),
+                          "custodia": {"sha256_original_registrado": t.get("sha256_original"),
+                                       "sha256_original_verificado": contenido.get("sha256"),
+                                       "verificado_por": NOMBRE}})
+        ruta, sha_resultado = guardar_resultado(t, contenido)
         # La guarda "AND worker = yo" evita que dos workers se pisen el resultado
-        ok = sql(con, "UPDATE trabajos SET estado = 'completado', ruta_resultado = %s, terminado = now(), "
-                      "error = NULL WHERE id = %s AND estado = 'en_ejecucion' AND worker = %s RETURNING id",
-                 (ruta, t["id"], NOMBRE))
+        ok = sql(con, "UPDATE trabajos SET estado = 'completado', ruta_resultado = %s, sha256_resultado = %s, "
+                      "terminado = now(), error = NULL "
+                      "WHERE id = %s AND estado = 'en_ejecucion' AND worker = %s RETURNING id",
+                 (ruta, sha_resultado, t["id"], NOMBRE))
         if not ok:   # lo eliminaron o lo recuperó otro worker mientras tanto
             os.remove(ruta)
             log.warning("Trabajo %s: ya no me pertenece; resultado descartado", t["id"])
             return
-        auditar(con, "procesar_ok", f"duracion={time.monotonic() - inicio:.2f}s", recurso)
+        auditar(con, "procesar_ok", f"duracion={time.monotonic() - inicio:.2f}s sha256_resultado={sha_resultado}",
+                recurso)
         log.info("Trabajo %s: completado en %.2fs", t["id"], time.monotonic() - inicio)
     else:
         sql(con, "UPDATE trabajos SET estado = 'fallido', error = %s, terminado = now() "
                  "WHERE id = %s AND estado = 'en_ejecucion' AND worker = %s", (contenido[:500], t["id"], NOMBRE))
-        auditar(con, "procesar_error", contenido[:200], recurso, resultado="error")
+        accion = "integridad_comprometida" if contenido.startswith("integridad_comprometida") else "procesar_error"
+        auditar(con, accion, contenido[:200], recurso, resultado="error")
         log.error("Trabajo %s: FALLIDO - %s", t["id"], contenido)
     latido(con, procesado=True)
 

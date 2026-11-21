@@ -12,7 +12,9 @@ Las pruebas de reglas de negocio consultan /api/reglas y solo se ejecutan si la 
 activa: encender o apagar una regla nunca rompe el resto de la suite.
 --docker: además mata y reinicia el worker (solo si se ejecuta en el mismo servidor del stack).
 """
+import concurrent.futures
 import csv
+import hashlib
 import io
 import os
 import re
@@ -246,7 +248,8 @@ if not ACTIVAS:
 # ------------------------------------------------------------------ recuperación del worker
 if CON_DOCKER:
     seccion("Recuperación del worker (docker)")
-    tid_r, _ = op.subir("02_suelos_lote_B.csv")
+    tid_r, _ = op.subir(CSV_OK[0] if CABECERA else "02_suelos_lote_B.csv")
+    prueba("Se encola un trabajo para la prueba de recuperación", tid_r is not None)
     for _ in range(30):
         if op.estado(tid_r)["estado"] == "en_ejecucion":
             break
@@ -275,6 +278,54 @@ prueba("El CSV exportado neutraliza fórmulas (CSV injection)",
        "'=HYPERLINK(1)" in celdas and not any(c.startswith("=") for c in celdas))
 largo = Cliente("x" * 300, "x").codigo_login
 prueba("Un usuario de 300 caracteres no provoca error 500", largo == 401, f"HTTP {largo}")
+
+# ------------------------------------------------------------------ sello de autenticidad
+seccion("Sello de autenticidad (cadena de custodia)")
+info = a1.estado(tid)
+r = a1.get(f"/trabajos/{tid}/descargar")
+prueba("El resultado descargado coincide con su SHA-256 registrado",
+       info.get("sha256_resultado") == hashlib.sha256(r.content).hexdigest())
+with open(os.path.join(DATOS, CSV_OK[0]), "rb") as f:
+    prueba("El SHA-256 del original se registró al recibirlo",
+           info.get("sha256_original") == hashlib.sha256(f.read()).hexdigest())
+# Muchos eventos simultáneos (2 procesos de Gunicorn): la cadena no debe romperse
+with concurrent.futures.ThreadPoolExecutor(max_workers=10) as hilos:
+    list(hilos.map(lambda _: a1.get("/admin/auditoria"), range(40)))
+v = ad.get("/api/auditoria/verificar").json()
+prueba("Tras 40 eventos concurrentes la cadena de auditoría sigue íntegra", v["integra"], v["mensaje"])
+c = a1.get("/api/auditoria/verificar").status_code
+prueba("Solo el coordinador verifica la cadena", c == 403, f"HTTP {c}")
+
+if CON_DOCKER:
+    raiz = os.path.join(DATOS, "..")
+
+    def demo(*args):
+        return subprocess.run(["bash", "scripts/demo_sello.sh", *args], cwd=raiz, capture_output=True,
+                              text=True, encoding="utf-8")
+
+    salida = demo("intentar-modificar").stdout + demo("intentar-modificar").stderr
+    prueba("La app (agro_web) no puede modificar la auditoría", "permission denied" in salida)
+    prueba("El superusuario tampoco: el trigger lo bloquea", "solo inserción" in salida)
+    evento = ad.get("/admin/auditoria.csv?accion=login_ok").text.splitlines()[-1].split(",")[0]
+    demo("alterar", evento)
+    v = ad.get("/api/auditoria/verificar").json()
+    prueba("Alterar un evento viejo rompe la cadena justo en ese evento",
+           not v["integra"] and str(v["evento_id"]) == evento, v["mensaje"])
+    demo("restaurar", evento)
+    v = ad.get("/api/auditoria/verificar").json()
+    prueba("Al restaurarlo la cadena vuelve a estar íntegra", v["integra"], v["mensaje"])
+
+    subprocess.run(["docker", "compose", "stop", "worker"], check=True, capture_output=True, cwd=raiz)
+    t_m, _ = op.subir(CSV_OK[0] if CABECERA else "09_sello_manipular.csv")
+    demo("manipular", str(t_m))
+    subprocess.run(["docker", "compose", "start", "worker"], check=True, capture_output=True, cwd=raiz)
+    prueba("Un archivo manipulado en /data no se procesa", op.esperar(t_m) == "fallido")
+    prueba("...y queda marcado 'integridad_comprometida'",
+           (op.estado(t_m)["error"] or "").startswith("integridad_comprometida"))
+    c = op.get(f"/trabajos/{t_m}/original").status_code
+    prueba("...y su original alterado no se entrega", c == 409, f"HTTP {c}")
+    texto = ad.get("/admin/auditoria?accion=integridad_comprometida").text
+    prueba("...y la auditoría lo registra", f"trabajo:{t_m}" in texto)
 
 print(f"\nResultado: {sum(resultados)} de {len(resultados)} pruebas pasaron")
 sys.exit(0 if all(resultados) else 1)

@@ -12,6 +12,11 @@
     <tr><th>Intentos</th><td>{{ t.intentos }}</td></tr>
     {% if t.error %}<tr><th>Error</th><td class="error-txt">{{ t.error }}</td></tr>{% endif %}
   </table>
+  <h2>Comprobante de custodia</h2>
+  <table class="ficha">
+    <tr><th>SHA-256 del original</th><td><code>{{ t.sha256_original or '—' }}</code></td></tr>
+    <tr><th>SHA-256 del resultado</th><td><code>{{ t.sha256_resultado or '—' }}</code></td></tr>
+  </table>
   {% set es_dueno = t.usuario_id == g.usuario.id %}
   <div class="fila">
     {% if t.estado in ('pendiente', 'en_ejecucion') %}<a class="boton" href="">Actualizar estado</a>{% endif %}

@@ -3,6 +3,7 @@ Rutas de agricultores (usuario) y técnicos (operador), y la API JSON.
 Cada ruta: 1) @requiere(permiso)  2) obtener_trabajo_autorizado() si recibe un trabajo_id
            3) reglas_negocio.evaluar_*()  4) auditar()
 """
+import hashlib
 import os
 import uuid
 
@@ -123,9 +124,10 @@ def subir():
                 with open(ruta, "wb") as f:
                     f.write(a.datos)
                 os.chmod(ruta, 0o600)
+                # sha256_original: huella del archivo AL RECIBIRLO (cadena de custodia, sello)
                 cur.execute("INSERT INTO trabajos (usuario_id, nombre_original, ruta_archivo, tipo, tamano_bytes, "
-                            "confidencial) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
-                            (u["id"], a.nombre, ruta, a.extension, len(a.datos), confidencial))
+                            "confidencial, sha256_original) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                            (u["id"], a.nombre, ruta, a.extension, len(a.datos), confidencial, a.sha256))
                 tid = cur.fetchone()["id"]
             except Exception:
                 if os.path.exists(ruta):        # no dejar archivos huérfanos si falla la BD
@@ -136,12 +138,33 @@ def subir():
         auditar(d.evento, d.motivo, recurso=f"archivo:{a.nombre}", resultado="denegado")
         return mostrar_panel(error=d.motivo, codigo=d.http)
 
-    auditar("subir", f"archivo={a.nombre} bytes={len(a.datos)}", recurso=f"trabajo:{tid}")
+    auditar("subir", f"archivo={a.nombre} bytes={len(a.datos)} sha256={a.sha256}", recurso=f"trabajo:{tid}")
     flash(f"Archivo recibido. Trabajo #{tid} en cola.", "ok")
     return redirect(url_for("detalle", trabajo_id=tid), code=303)
 
 
 # ---------------------------------------------------------------- un trabajo
+def huella(ruta):
+    h = hashlib.sha256()
+    with open(ruta, "rb") as f:
+        for bloque in iter(lambda: f.read(65536), b""):
+            h.update(bloque)
+    return h.hexdigest()
+
+
+def entregar_con_custodia(t, ruta_bd, esperado, accion, nombre_descarga):
+    """Entrega un archivo solo si su SHA-256 coincide con el registrado (sello de autenticidad)."""
+    ruta = ruta_segura(ruta_bd)
+    if not ruta or not os.path.isfile(ruta):
+        abort(410)
+    if esperado and huella(ruta) != esperado:
+        auditar("integridad_comprometida", f"{accion}: el SHA-256 del archivo no coincide con el registrado",
+                recurso=f"trabajo:{t['id']}", resultado="error")
+        abort(409, "Integridad comprometida: el archivo fue modificado en el servidor después de registrarse. "
+                   "No se entrega. Avise al coordinador.")
+    auditar(accion, f"dueno={t['dueno']} sha256={esperado or '-'}", recurso=f"trabajo:{t['id']}")
+    return send_file(ruta, as_attachment=True, download_name=nombre_descarga)
+
 @app.get("/trabajos/<int:trabajo_id>")
 @requiere("ver_propios")
 def detalle(trabajo_id):
@@ -158,11 +181,8 @@ def descargar(trabajo_id):
     d = reglas_negocio.evaluar_descarga(contexto(trabajo=t), tipo="resultado")
     if not d.permitido:
         rechazar(d, f"trabajo:{trabajo_id}")
-    ruta = ruta_segura(t["ruta_resultado"])
-    if not ruta or not os.path.isfile(ruta):
-        abort(410)
-    auditar("descargar", f"dueno={t['dueno']}", recurso=f"trabajo:{trabajo_id}")
-    return send_file(ruta, as_attachment=True, download_name=f"resultado_{trabajo_id}.json")
+    return entregar_con_custodia(t, t["ruta_resultado"], t["sha256_resultado"], "descargar",
+                                 f"resultado_{trabajo_id}.json")
 
 
 @app.get("/trabajos/<int:trabajo_id>/original")
@@ -173,11 +193,8 @@ def descargar_original(trabajo_id):
     d = reglas_negocio.evaluar_descarga(contexto(trabajo=t), tipo="original")
     if not d.permitido:
         rechazar(d, f"trabajo:{trabajo_id}")
-    ruta = ruta_segura(t["ruta_archivo"])
-    if not ruta or not os.path.isfile(ruta):
-        abort(410)
-    auditar("descargar_original", f"dueno={t['dueno']}", recurso=f"trabajo:{trabajo_id}")
-    return send_file(ruta, as_attachment=True, download_name=t["nombre_original"])
+    return entregar_con_custodia(t, t["ruta_archivo"], t["sha256_original"], "descargar_original",
+                                 t["nombre_original"])
 
 
 @app.post("/trabajos/<int:trabajo_id>/eliminar")

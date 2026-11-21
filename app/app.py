@@ -26,7 +26,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash
 
 import config
-from auditoria import auditar
+from auditoria import auditar, texto_verificacion, verificar_cadena
 from db import consulta
 from permisos import ROLES, puede
 from seguridad import cargar_usuario, token_csrf, verificar_csrf
@@ -126,6 +126,16 @@ def crear_usuario_cli(usuario, rol, clave):
     auditar("crear_usuario", f"nuevo={usuario} rol={rol}", recurso=f"usuario:{usuario}",
             usuario="cli", origen="cli")
     click.echo(f"Usuario {usuario} creado con rol {rol}")
+
+
+@app.cli.command("verificar-cadena")
+def verificar_cadena_cli():
+    """Sello de autenticidad: verifica la cadena de hashes de la auditoría. Uso: flask --app app verificar-cadena"""
+    r = verificar_cadena()
+    auditar("verificar_cadena", texto_verificacion(r), recurso="auditoria", usuario="cli", origen="cli",
+            resultado="permitido" if r["integra"] else "error")
+    click.echo(texto_verificacion(r))
+    raise SystemExit(0 if r["integra"] else 1)
 
 
 @app.cli.command("crear-demo")
