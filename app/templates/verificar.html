@@ -1,11 +1,21 @@
 {% extends "base.html" %}
+{% block titulo %}Verificar cadena{% endblock %}
 {% block contenido %}
+<h1>Verificación de la cadena de auditoría</h1>
+<div class="aviso {{ 'ok' if r.integra else 'error' }}" role="status"><strong>{{ texto }}</strong></div>
 <section class="tarjeta">
-  <h1>Verificación de la cadena de auditoría</h1>
-  <div class="aviso {{ 'ok' if r.integra else 'error' }}" role="status">{{ texto }}</div>
-  <p class="sutil">Cada evento guarda el SHA-256 del evento anterior. Si alguien modifica o borra un evento
-    (incluso con acceso directo a la base de datos), la cadena deja de cuadrar desde ese punto.</p>
-  <p><a class="boton" href="{{ url_for('verificar_auditoria') }}">Verificar de nuevo</a>
-     <a href="{{ url_for('auditoria') }}">Volver a la auditoría</a></p>
+  <h2>Qué se comprobó</h2>
+  <ul class="politica">
+    <li>Que no falte ningún evento (la numeración <code>seq</code> es consecutiva).</li>
+    <li>Que cada evento enlace con el anterior (<code>hash_anterior</code>).</li>
+    <li>Que el SHA-256 de cada evento coincida con su contenido actual.</li>
+    <li>Que la cabeza de la cadena apunte al último evento (nadie borró eventos al final).</li>
+  </ul>
+  <p class="sutil">El hash lo calcula PostgreSQL con un trigger al insertar cada evento; la tabla es de solo inserción.
+    Si alguien altera la base de datos directamente, la cadena deja de cuadrar desde ese evento. Esta verificación también queda registrada en la auditoría.</p>
+  <div class="acciones">
+    <a class="boton" href="{{ url_for('verificar_auditoria') }}">Verificar de nuevo</a>
+    <a class="boton secundario" href="{{ url_for('auditoria') }}">Volver a la auditoría</a>
+  </div>
 </section>
 {% endblock %}

@@ -13,9 +13,10 @@ Mapa de archivos (dónde tocar en cada reto):
   rutas_admin.py     -> rutas del coordinador (usuarios, auditoría, reglas, recursos)
   app.py (este)      -> arranque, manejo de errores y comandos de consola
 """
+import hashlib
 import logging
 import os
-from datetime import timedelta
+from datetime import timedelta, timezone
 
 import click
 import psycopg
@@ -51,9 +52,22 @@ app.before_request(cargar_usuario)
 app.before_request(verificar_csrf)
 
 
+def _version_estaticos():
+    """Huella de estilo.css y estado.js: cambia en cada despliegue y obliga al navegador a no usar la copia vieja."""
+    h = hashlib.sha256()
+    for nombre in ("estilo.css", "estado.js"):
+        with open(os.path.join(app.static_folder, nombre), "rb") as f:
+            h.update(f.read())
+    return h.hexdigest()[:10]
+
+
+VERSION_ESTATICOS = _version_estaticos()
+
+
 @app.context_processor
 def plantillas():
     return {
+        "v": VERSION_ESTATICOS,
         "puede": lambda p: g.usuario is not None and puede(g.usuario["rol"], p),
         "csrf_campo": lambda: Markup(f'<input type="hidden" name="csrf" value="{token_csrf()}">'),
     }
@@ -67,6 +81,44 @@ ESTADOS_TEXTO = {"pendiente": "Pendiente", "en_ejecucion": "En ejecución", "com
 def estado_texto(estado):
     """'en_ejecucion' -> 'En ejecución' (en pantalla nunca se muestran los nombres internos)."""
     return ESTADOS_TEXTO.get(estado, estado)
+
+
+ROLES_TEXTO = {"admin": "Coordinador", "operador": "Técnico", "usuario": "Agricultor"}
+
+
+@app.template_filter("rol_texto")
+def rol_texto(rol):
+    """Nombre del rol en el lenguaje del laboratorio: 'operador' -> 'Técnico'."""
+    return ROLES_TEXTO.get(rol, rol)
+
+
+HORA_COLOMBIA = timezone(timedelta(hours=-5))   # la BD guarda en UTC; en pantalla se muestra hora de Colombia
+
+
+@app.template_filter("fecha")
+def fecha(valor, formato="%Y-%m-%d %H:%M:%S"):
+    if not valor:
+        return "—"
+    if valor.tzinfo is not None:
+        valor = valor.astimezone(HORA_COLOMBIA)
+    return valor.strftime(formato)
+
+
+@app.template_filter("tamano")
+def tamano(b):
+    """Bytes legibles: 50 B, 1.2 KB, 1.5 MB."""
+    if b < 1024:
+        return f"{b} B"
+    return f"{b / 1024:.1f} KB" if b < 1024 * 1024 else f"{b / 1048576:.1f} MB"
+
+
+@app.template_filter("duracion")
+def duracion(t):
+    """Segundos entre iniciado y terminado de un trabajo, en texto."""
+    if not (t.get("iniciado") and t.get("terminado")):
+        return "—"
+    s = (t["terminado"] - t["iniciado"]).total_seconds()
+    return f"{s:.1f} s" if s < 120 else f"{s / 60:.1f} min"
 
 
 # Registrar las rutas (se importan después de crear 'app' porque la usan en sus decoradores)

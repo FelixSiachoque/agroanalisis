@@ -1,18 +1,26 @@
 {% extends "base.html" %}
+{% block titulo %}Reglas de negocio{% endblock %}
 {% block contenido %}
+<h1>Reglas de negocio del laboratorio</h1>
+<p class="sutil">Vista de solo lectura. Las reglas se configuran en <code>app/reglas_negocio.py</code> (diccionario <code>REGLAS</code>)
+  o se encienden y apagan sin reconstruir con <code>REGLA_&lt;NOMBRE&gt;=1</code> o <code>=0</code> en el <code>.env</code> y <code>docker compose up -d app</code>.
+  Apagar una regla no afecta los permisos por rol, el aislamiento entre usuarios ni la validación técnica de archivos.</p>
 <section class="tarjeta">
-  <h1>Reglas de negocio del laboratorio</h1>
-  <p class="sutil">Solo lectura. Se configuran en <code>app/reglas_negocio.py</code> o con <code>REGLA_&lt;NOMBRE&gt;=1</code> en el .env.</p>
+  <div class="tabla-desplazable">
   <table>
-    <tr><th>Regla</th><th>Estado</th><th>Cuándo actúa</th><th>Qué hace</th><th>Parámetros</th></tr>
+    <thead><tr><th scope="col">Regla</th><th scope="col">Estado</th><th scope="col">Cuándo actúa</th><th scope="col">Qué hace</th><th scope="col">Parámetros</th></tr></thead>
+    <tbody>
     {% for r in reglas %}
     <tr>
       <td><code>{{ r.nombre }}</code></td>
-      <td>{{ 'activa' if r.activa else 'inactiva' }}</td>
-      <td>{{ r.enganche }}</td><td>{{ r.descripcion }}</td>
+      <td><span class="{{ 'activa' if r.activa else 'inactiva' }}">{{ 'Activa' if r.activa else 'Inactiva' }}</span></td>
+      <td>{{ {'subida': 'al subir', 'descarga': 'al descargar', 'eliminacion': 'al eliminar', 'reprocesado': 'al reprocesar', 'acceso': 'al consultar'}[r.enganche] }}</td>
+      <td>{{ r.descripcion }}</td>
       <td>{% for k, v in r.parametros.items() %}<code>{{ k }}={{ v }}</code> {% endfor %}</td>
     </tr>
     {% endfor %}
+    </tbody>
   </table>
+  </div>
 </section>
 {% endblock %}

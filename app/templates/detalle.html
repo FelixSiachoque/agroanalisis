@@ -1,31 +1,76 @@
 {% extends "base.html" %}
+{% block titulo %}Trabajo {{ t.id }}{% endblock %}
+{% set activo = t.estado in ('pendiente', 'en_ejecucion') %}
+{% set integridad = t.estado == 'fallido' and t.error and t.error.startswith('integridad_comprometida') %}
+{% block cabeza %}{% if activo %}<noscript><meta http-equiv="refresh" content="3"></noscript>{% endif %}{% endblock %}
+{% block atributos_body %}{% if activo %}data-recargar-al-terminar{% endif %}{% endblock %}
 {% block contenido %}
 {% if error %}<div class="aviso error" role="alert">{{ error }}</div>{% endif %}
+{% set es_dueno = t.usuario_id == g.usuario.id %}
+
+<div class="encabezado">
+  <h1>Trabajo n.º {{ t.id }}
+    <span class="estado {{ 'integridad' if integridad else t.estado }}" data-trabajo="{{ t.id }}" data-estado="{{ t.estado }}">{{ 'Integridad comprometida' if integridad else t.estado | estado_texto }}</span></h1>
+  <a href="{{ url_for('operacion') if puede('ver_todos') and not es_dueno else url_for('panel') }}">Volver al listado</a>
+</div>
+
 <section class="tarjeta">
-  <h1>Trabajo #{{ t.id }} <span class="estado {{ t.estado }}">{{ t.estado }}</span></h1>
-  <table class="ficha">
-    <tr><th>Dueño</th><td>{{ t.dueno }}</td></tr>
-    <tr><th>Archivo</th><td>{{ t.nombre_original }} ({{ t.tipo }}, {{ t.tamano_bytes }} bytes)</td></tr>
-    <tr><th>Creado</th><td>{{ t.creado.strftime('%Y-%m-%d %H:%M:%S') }}</td></tr>
-    <tr><th>Iniciado</th><td>{{ t.iniciado.strftime('%Y-%m-%d %H:%M:%S') if t.iniciado else '—' }}</td></tr>
-    <tr><th>Terminado</th><td>{{ t.terminado.strftime('%Y-%m-%d %H:%M:%S') if t.terminado else '—' }}</td></tr>
-    <tr><th>Intentos</th><td>{{ t.intentos }}</td></tr>
-    {% if t.error %}<tr><th>Error</th><td class="error-txt">{{ t.error }}</td></tr>{% endif %}
-  </table>
-  <h2>Comprobante de custodia</h2>
-  <table class="ficha">
-    <tr><th>SHA-256 del original</th><td><code>{{ t.sha256_original or '—' }}</code></td></tr>
-    <tr><th>SHA-256 del resultado</th><td><code>{{ t.sha256_resultado or '—' }}</code></td></tr>
-  </table>
-  {% set es_dueno = t.usuario_id == g.usuario.id %}
-  <div class="fila">
-    {% if t.estado in ('pendiente', 'en_ejecucion') %}<a class="boton" href="">Actualizar estado</a>{% endif %}
-    {% if t.estado == 'completado' and (es_dueno or puede('descargar_todos')) %}<a class="boton" href="{{ url_for('descargar', trabajo_id=t.id) }}">Descargar resultado (JSON)</a>{% endif %}
-    {% if es_dueno or puede('descargar_todos') %}<a class="boton" href="{{ url_for('descargar_original', trabajo_id=t.id) }}">Descargar original</a>{% endif %}
-    {% if t.estado == 'fallido' and puede('reprocesar') %}
-      <form method="post" action="{{ url_for('reprocesar', trabajo_id=t.id) }}">{{ csrf_campo() }}<button>Reprocesar</button></form>{% endif %}
+  <h2>Recorrido</h2>
+  <ol class="linea-tiempo">
+    <li class="hecho"><span class="paso">1. Recibido</span>{{ t.creado | fecha }}</li>
+    <li class="{{ 'hecho' if t.iniciado }}"><span class="paso">2. En proceso</span>{{ t.iniciado | fecha }}</li>
+    <li class="{{ 'hecho' if t.terminado }}"><span class="paso">3. {{ 'Terminado con error' if t.estado == 'fallido' else 'Terminado' }}</span>{{ t.terminado | fecha }}</li>
+  </ol>
+  {% if t.estado == 'pendiente' %}<p class="sutil">En cola: el worker lo tomará en unos segundos. Esta página se actualiza sola.</p>
+  {% elif t.estado == 'en_ejecucion' %}<p class="sutil">El worker lo está procesando. Esta página se actualiza sola.</p>{% endif %}
+  {% if t.error %}
+  <div class="aviso error"><strong>{{ 'La muestra no se procesó por seguridad.' if integridad else 'No se pudo procesar.' }}</strong> {{ t.error }}
+    {% if not integridad %}<br><span>Revise el archivo, corríjalo y envíelo de nuevo.</span>{% endif %}</div>
+  {% endif %}
+</section>
+
+<div class="rejilla">
+  <section class="tarjeta">
+    <h2>Datos del trabajo</h2>
+    <table class="ficha">
+      <tr><th scope="row">Dueño</th><td>{{ t.dueno }}</td></tr>
+      <tr><th scope="row">Archivo</th><td>{{ t.nombre_original }}</td></tr>
+      <tr><th scope="row">Tipo y tamaño</th><td>{{ t.tipo | upper }} · {{ '{:,}'.format(t.tamano_bytes).replace(',', '.') }} bytes</td></tr>
+      <tr><th scope="row">Duración del proceso</th><td>{{ t | duracion }}</td></tr>
+      <tr><th scope="row">Intentos</th><td>{{ t.intentos }}{% if t.reprocesos %} · reprocesado {{ t.reprocesos }} {{ 'vez' if t.reprocesos == 1 else 'veces' }}{% endif %}</td></tr>
+      {% if t.confidencial %}<tr><th scope="row">Confidencial</th><td>Sí</td></tr>{% endif %}
+    </table>
+  </section>
+
+  <section class="tarjeta">
+    <h2>Comprobante de custodia</h2>
+    <p class="sutil">Huellas SHA-256 registradas por el laboratorio. Si el archivo cambiara en el servidor, la huella no coincidiría y no se procesaría ni se entregaría.</p>
+    <table class="ficha">
+      <tr><th scope="row">Original (al recibirlo)</th><td class="hash">{{ t.sha256_original or '—' }}</td></tr>
+      <tr><th scope="row">Resultado (al producirlo)</th><td class="hash">{{ t.sha256_resultado or '—' }}</td></tr>
+    </table>
+  </section>
+</div>
+
+<section class="tarjeta">
+  <h2>Acciones</h2>
+  <div class="acciones">
+    {% if t.estado == 'completado' and (es_dueno or puede('descargar_todos')) %}
+      <a class="boton" href="{{ url_for('descargar', trabajo_id=t.id) }}">Descargar resultado (JSON)</a>{% endif %}
+    {% if es_dueno or puede('descargar_todos') %}
+      <a class="boton secundario" href="{{ url_for('descargar_original', trabajo_id=t.id) }}">Descargar archivo original</a>{% endif %}
+    {% if t.estado == 'fallido' and puede('reprocesar') and not integridad %}
+      <form method="post" action="{{ url_for('reprocesar', trabajo_id=t.id) }}">{{ csrf_campo() }}<button type="submit" class="secundario">Reprocesar</button></form>{% endif %}
     {% if es_dueno or puede('eliminar_cualquiera') %}
-      <form method="post" action="{{ url_for('eliminar', trabajo_id=t.id) }}">{{ csrf_campo() }}<button class="peligro">Eliminar</button></form>{% endif %}
+    <details class="confirmar">
+      <summary class="boton-peligro">Eliminar…</summary>
+      <div class="caja">
+        <p>Se borrarán el archivo y el resultado. Esta acción no se puede deshacer.</p>
+        <form method="post" action="{{ url_for('eliminar', trabajo_id=t.id) }}">{{ csrf_campo() }}<button type="submit" class="peligro">Sí, eliminar el trabajo {{ t.id }}</button></form>
+      </div>
+    </details>
+    {% endif %}
   </div>
+  {% if not (es_dueno or puede('descargar_todos')) %}<p class="sutil">Como técnico puede supervisar el trabajo, pero los archivos pertenecen al agricultor.</p>{% endif %}
 </section>
 {% endblock %}

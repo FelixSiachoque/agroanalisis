@@ -1,25 +1,43 @@
 {% extends "base.html" %}
+{% block titulo %}Operación{% endblock %}
+{% block cabeza %}{% if trabajos | selectattr('estado', 'in', ['pendiente', 'en_ejecucion']) | list %}<noscript><meta http-equiv="refresh" content="5"></noscript>{% endif %}{% endblock %}
 {% block contenido %}
-<section class="tarjeta">
+<div class="encabezado">
   <h1>Operación · cola de trabajos</h1>
-  <div class="fila">
-    <a href="{{ url_for('operacion') }}" class="chip {{ 'activo' if not estado }}">todos</a>
-    {% for r in resumen %}
-      <a href="{{ url_for('operacion', estado=r.estado) }}" class="chip {{ 'activo' if estado == r.estado }}">{{ r.estado }}: {{ r.n }}</a>
-    {% endfor %}
-  </div>
+  <a class="boton secundario mini" href="{{ url_for('operacion', estado=estado) }}">Actualizar</a>
+</div>
+<p class="sutil">Supervisión de los trabajos de todos los agricultores. El técnico ve el estado y los errores, y puede reprocesar los fallidos; los archivos solo los descarga su dueño o el coordinador.</p>
+
+<nav class="chips" aria-label="Filtrar por estado">
+  <a class="chip" href="{{ url_for('operacion') }}" aria-current="{{ 'true' if not estado else 'false' }}">Todos</a>
+  {% for r in resumen %}
+  <a class="chip" href="{{ url_for('operacion', estado=r.estado) }}" aria-current="{{ 'true' if estado == r.estado else 'false' }}">{{ r.estado | estado_texto }}: {{ r.n }}</a>
+  {% endfor %}
+</nav>
+
+<section class="tarjeta">
+  {% if trabajos %}
+  <div class="tabla-desplazable">
   <table>
-    <tr><th>#</th><th>Dueño</th><th>Archivo</th><th>Estado</th><th>Intentos</th><th>Creado</th><th>Terminado</th><th>Error</th><th></th></tr>
+    <thead><tr><th scope="col" class="num">N.º</th><th scope="col">Dueño</th><th scope="col">Archivo</th><th scope="col">Estado</th>
+      <th scope="col" class="num">Intentos</th><th scope="col">Enviado</th><th scope="col">Terminado</th><th scope="col">Error</th><th scope="col"><span class="sutil">Acción</span></th></tr></thead>
+    <tbody>
     {% for t in trabajos %}
+    {% set integridad = t.estado == 'fallido' and t.error and t.error.startswith('integridad_comprometida') %}
     <tr>
-      <td><a href="{{ url_for('detalle', trabajo_id=t.id) }}">{{ t.id }}</a></td><td>{{ t.dueno }}</td><td>{{ t.nombre_original }}</td>
-      <td><span class="estado {{ t.estado }}">{{ t.estado }}</span></td><td>{{ t.intentos }}</td>
-      <td>{{ t.creado.strftime('%H:%M:%S') }}</td><td>{{ t.terminado.strftime('%H:%M:%S') if t.terminado else '—' }}</td>
-      <td class="error-txt">{{ t.error or '' }}</td>
-      <td>{% if t.estado == 'fallido' and puede('reprocesar') %}
-        <form method="post" action="{{ url_for('reprocesar', trabajo_id=t.id) }}">{{ csrf_campo() }}<input type="hidden" name="volver" value="operacion"><button class="mini">reprocesar</button></form>{% endif %}</td>
+      <td class="num"><a href="{{ url_for('detalle', trabajo_id=t.id) }}">{{ t.id }}</a></td>
+      <td>{{ t.dueno }}</td><td>{{ t.nombre_original }}</td>
+      <td><span class="estado {{ 'integridad' if integridad else t.estado }}" data-trabajo="{{ t.id }}" data-estado="{{ t.estado }}">{{ 'Integridad comprometida' if integridad else t.estado | estado_texto }}</span></td>
+      <td class="num">{{ t.intentos }}</td>
+      <td>{{ t.creado | fecha('%m-%d %H:%M:%S') }}</td><td>{{ t.terminado | fecha('%m-%d %H:%M:%S') }}</td>
+      <td class="sutil">{{ t.error or '' }}</td>
+      <td>{% if t.estado == 'fallido' and puede('reprocesar') and not integridad %}
+        <form method="post" action="{{ url_for('reprocesar', trabajo_id=t.id) }}">{{ csrf_campo() }}<input type="hidden" name="volver" value="operacion"><button type="submit" class="mini secundario">Reprocesar</button></form>{% endif %}</td>
     </tr>
     {% endfor %}
+    </tbody>
   </table>
+  </div>
+  {% else %}<p class="vacio">No hay trabajos{{ ' en estado «' ~ (estado | estado_texto) ~ '»' if estado }}.</p>{% endif %}
 </section>
 {% endblock %}

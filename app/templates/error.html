@@ -1,8 +1,14 @@
 {% extends "base.html" %}
+{% block titulo %}Error {{ codigo }}{% endblock %}
 {% block contenido %}
-<section class="tarjeta">
-  <h1>Error {{ codigo }}</h1>
+<section class="tarjeta login-caja">
+  <h1>{{ {400: 'Solicitud no válida', 403: 'Acceso denegado', 404: 'No encontrado', 405: 'Método no permitido',
+          409: 'Operación no disponible', 410: 'Archivo no disponible', 413: 'Archivo demasiado grande',
+          422: 'Datos no válidos', 429: 'Demasiados intentos', 500: 'Error interno', 503: 'Servicio no disponible'}.get(codigo, 'Error') }}
+    <span class="sutil">({{ codigo }})</span></h1>
   <p>{{ mensaje }}</p>
-  <p><a href="{{ url_for('panel') }}">Volver</a></p>
+  <div class="acciones">
+    {% if g.usuario %}<a class="boton" href="{{ url_for('panel') }}">Ir a mis trabajos</a>{% else %}<a class="boton" href="{{ url_for('login') }}">Ingresar</a>{% endif %}
+  </div>
 </section>
 {% endblock %}

@@ -1,36 +1,83 @@
 {% extends "base.html" %}
+{% block titulo %}Mis trabajos{% endblock %}
+{% block cabeza %}
+  {% if trabajos | selectattr('estado', 'in', ['pendiente', 'en_ejecucion']) | list %}
+  <noscript><meta http-equiv="refresh" content="5"></noscript>
+  {% endif %}
+{% endblock %}
 {% block contenido %}
-{% if error %}<div class="aviso error" role="alert">{{ error }}</div>{% endif %}
-<section class="tarjeta">
-  <h1>Cargar archivo para análisis</h1>
-  <p class="sutil">Formatos permitidos: <b>.txt</b> (informes) y <b>.csv</b> (resultados de laboratorio), máximo <b>{{ max_mb }} MB</b>, texto UTF-8.
-  {% if cabecera %}<br>El CSV debe empezar con la cabecera <code>{{ cabecera }}</code>.{% endif %}
-  {% if cuota_aplica %}<br>Trabajos activos: <b>{{ activos }} / {{ max_activos }}</b> (regla del laboratorio).{% endif %}</p>
-  <form method="post" action="{{ url_for('subir') }}" enctype="multipart/form-data" class="fila">
-    {{ csrf_campo() }}
-    <input type="file" name="archivo" accept=".txt,.csv" required>
-    {% if confidencial_disponible %}<label><input type="checkbox" name="confidencial" value="1"> Confidencial</label>{% endif %}
-    <button>Enviar a procesar</button>
-  </form>
-  {% if reglas %}<h2>Reglas vigentes del laboratorio</h2><ul>{% for r in reglas %}<li>{{ r.descripcion }}</li>{% endfor %}</ul>{% endif %}
-</section>
+<div class="encabezado">
+  <h1>Mis trabajos</h1>
+  <span class="sutil">{{ g.usuario.rol | rol_texto }} · {{ g.usuario.usuario }}</span>
+</div>
 
-<section class="tarjeta">
-  <h2>Mis trabajos <a class="sutil" href="{{ url_for('panel') }}">actualizar</a></h2>
+{% if error %}<div class="aviso error" role="alert"><strong>No se pudo enviar el archivo.</strong> {{ error }}</div>{% endif %}
+
+<div class="rejilla">
+  <section class="tarjeta" aria-labelledby="t-subir">
+    <h2 id="t-subir">Enviar un archivo para análisis</h2>
+    <form method="post" action="{{ url_for('subir') }}" enctype="multipart/form-data">
+      {{ csrf_campo() }}
+      <div class="campo">
+        <label for="archivo">Archivo (.csv o .txt)</label>
+        <input id="archivo" type="file" name="archivo" accept=".txt,.csv" required aria-describedby="politica">
+      </div>
+      {% if confidencial_disponible %}
+      <div class="campo">
+        <label class="casilla"><input type="checkbox" name="confidencial" value="1"> Marcar como confidencial
+          <span class="ayuda">(solo usted y el coordinador podrán verlo)</span></label>
+      </div>
+      {% endif %}
+      <button type="submit">Enviar a procesar</button>
+    </form>
+    {% if cuota_aplica %}
+    <p class="cuota">Trabajos en cola o en proceso: <strong>{{ activos }} de {{ max_activos }}</strong>
+      <meter min="0" max="{{ max_activos }}" low="{{ max_activos - 1 }}" high="{{ max_activos }}" optimum="0" value="{{ activos }}">{{ activos }} de {{ max_activos }}</meter></p>
+    {% endif %}
+  </section>
+
+  <section class="tarjeta" aria-labelledby="t-politica">
+    <h2 id="t-politica">Antes de enviar</h2>
+    <ul class="politica" id="politica">
+      <li><strong>.csv</strong>: resultados de laboratorio (estadísticas por columna y clasificación de pH si hay columna <code>ph</code>).</li>
+      <li><strong>.txt</strong>: informes de campo (líneas, palabras y términos frecuentes).</li>
+      <li>Máximo <strong>{{ '%g' % max_mb }} MB</strong>, texto en UTF-8 y, en CSV, hasta {{ '{:,}'.format(max_filas).replace(',', '.') }} filas.</li>
+      {% if cabecera %}<li>El CSV debe empezar exactamente con la cabecera <code>{{ cabecera }}</code>.</li>{% endif %}
+    </ul>
+    {% if reglas %}
+    <h3>Reglas vigentes del laboratorio</h3>
+    <ul class="politica">{% for r in reglas %}<li>{{ r.descripcion }}</li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+</div>
+
+<section class="tarjeta" aria-labelledby="t-lista">
+  <div class="encabezado">
+    <h2 id="t-lista">Historial</h2>
+    <a class="boton secundario mini" href="{{ url_for('panel') }}">Actualizar</a>
+  </div>
   {% if trabajos %}
+  <div class="tabla-desplazable">
   <table>
-    <tr><th>#</th><th>Archivo</th><th>Tipo</th><th>Tamaño</th><th>Estado</th><th>Creado</th><th></th></tr>
+    <thead><tr><th scope="col" class="num">N.º</th><th scope="col">Archivo</th><th scope="col">Tipo</th>
+      <th scope="col" class="num">Tamaño</th><th scope="col">Estado</th><th scope="col">Enviado</th><th scope="col"><span class="sutil">Acciones</span></th></tr></thead>
+    <tbody>
     {% for t in trabajos %}
+    {% set integridad = t.estado == 'fallido' and t.error and t.error.startswith('integridad_comprometida') %}
     <tr>
-      <td>{{ t.id }}</td><td>{{ t.nombre_original }}</td><td>{{ t.tipo }}</td>
-      <td>{{ (t.tamano_bytes / 1024) | round(1) }} KB</td>
-      <td><span class="estado {{ t.estado }}">{{ t.estado }}</span></td>
-      <td>{{ t.creado.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-      <td><a href="{{ url_for('detalle', trabajo_id=t.id) }}">ver</a>
-        {% if t.estado == 'completado' %} · <a href="{{ url_for('descargar', trabajo_id=t.id) }}">descargar</a>{% endif %}</td>
+      <td class="num">{{ t.id }}</td>
+      <td>{{ t.nombre_original }}{% if t.confidencial %} <span class="sutil">(confidencial)</span>{% endif %}</td>
+      <td>{{ t.tipo | upper }}</td>
+      <td class="num">{{ t.tamano_bytes | tamano }}</td>
+      <td><span class="estado {{ 'integridad' if integridad else t.estado }}" data-trabajo="{{ t.id }}" data-estado="{{ t.estado }}">{{ 'Integridad comprometida' if integridad else t.estado | estado_texto }}</span></td>
+      <td>{{ t.creado | fecha('%Y-%m-%d %H:%M') }}</td>
+      <td><a href="{{ url_for('detalle', trabajo_id=t.id) }}">Ver detalle</a>
+        {% if t.estado == 'completado' %} · <a href="{{ url_for('descargar', trabajo_id=t.id) }}">Descargar</a>{% endif %}</td>
     </tr>
     {% endfor %}
+    </tbody>
   </table>
-  {% else %}<p class="sutil">Aún no tiene trabajos.</p>{% endif %}
+  </div>
+  {% else %}<p class="vacio">Aún no ha enviado archivos. Use el formulario de arriba para enviar el primero.</p>{% endif %}
 </section>
 {% endblock %}

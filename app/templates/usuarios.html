@@ -1,38 +1,77 @@
 {% extends "base.html" %}
+{% block titulo %}Usuarios{% endblock %}
 {% block contenido %}
-<section class="tarjeta">
-  <h1>Crear usuario</h1>
-  <form method="post" class="fila">
-    {{ csrf_campo() }}<input type="hidden" name="accion" value="crear">
-    <input name="usuario" placeholder="usuario (alfanumérico)" required>
-    <input name="clave" type="password" placeholder="contraseña (mín. 8)" required minlength="8">
-    <select name="rol">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == 'usuario' }}>{{ r }}</option>{% endfor %}</select>
-    <button>Crear</button>
-  </form>
-</section>
-<section class="tarjeta">
-  <h2>Usuarios</h2>
+<h1>Usuarios y roles</h1>
+
+<div class="rejilla">
+  <section class="tarjeta" aria-labelledby="t-crear">
+    <h2 id="t-crear">Crear usuario</h2>
+    <form method="post">
+      {{ csrf_campo() }}<input type="hidden" name="accion" value="crear">
+      <div class="campo">
+        <label for="n-usuario">Usuario <span class="ayuda">(letras y números, máx. 50)</span></label>
+        <input id="n-usuario" name="usuario" type="text" required maxlength="50" pattern="[A-Za-z0-9]+" autocomplete="off">
+      </div>
+      <div class="campo">
+        <label for="n-clave">Contraseña <span class="ayuda">(mínimo 8 caracteres)</span></label>
+        <input id="n-clave" name="clave" type="password" required minlength="8" autocomplete="new-password">
+      </div>
+      <div class="campo">
+        <label for="n-rol">Rol</label>
+        <select id="n-rol" name="rol">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == 'usuario' }}>{{ r | rol_texto }} ({{ r }})</option>{% endfor %}</select>
+      </div>
+      <button type="submit">Crear usuario</button>
+    </form>
+  </section>
+
+  <section class="tarjeta" aria-labelledby="t-matriz">
+    <h2 id="t-matriz">Qué puede hacer cada rol</h2>
+    <p class="sutil">Matriz definida en <code>app/permisos.py</code> y validada en el servidor en cada petición.</p>
+    {% set todos = (permisos.values() | map('list') | sum(start=[])) | unique | sort %}
+    <div class="tabla-desplazable">
+    <table class="matriz">
+      <thead><tr><th scope="col">Permiso</th>{% for r in roles %}<th scope="col">{{ r | rol_texto }}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for p in todos %}
+      <tr><td><code>{{ p }}</code></td>{% for r in roles %}<td>{{ 'Sí' if p in permisos[r] else '—' }}</td>{% endfor %}</tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+</div>
+
+<section class="tarjeta" aria-labelledby="t-lista">
+  <h2 id="t-lista">Cuentas</h2>
+  <div class="tabla-desplazable">
   <table>
-    <tr><th>ID</th><th>Usuario</th><th>Rol</th><th>Activo</th><th>Creado</th><th>Acciones</th></tr>
+    <thead><tr><th scope="col" class="num">ID</th><th scope="col">Usuario</th><th scope="col">Rol</th><th scope="col">Estado</th><th scope="col">Creado</th><th scope="col">Cambiar rol</th><th scope="col">Acceso</th></tr></thead>
+    <tbody>
     {% for u in lista %}
     <tr>
-      <td>{{ u.id }}</td><td>{{ u.usuario }}</td><td><em class="rol rol-{{ u.rol }}">{{ u.rol }}</em></td>
-      <td>{{ 'sí' if u.activo else 'no' }}</td><td>{{ u.creado.strftime('%Y-%m-%d') }}</td>
-      <td class="fila">
-        {% if u.id != g.usuario.id %}
-        <form method="post" class="fila">
-          {{ csrf_campo() }}<input type="hidden" name="accion" value="cambiar_rol"><input type="hidden" name="id" value="{{ u.id }}">
-          <select name="rol">{% for r in roles %}<option {{ 'selected' if r == u.rol }}>{{ r }}</option>{% endfor %}</select>
-          <button class="mini">cambiar rol</button>
+      <td class="num">{{ u.id }}</td><td>{{ u.usuario }}</td><td>{{ u.rol | rol_texto }}</td>
+      <td>{{ 'Activa' if u.activo else 'Desactivada' }}</td><td>{{ u.creado | fecha('%Y-%m-%d') }}</td>
+      {% if u.id != g.usuario.id %}
+      <td>
+        <form method="post" class="en-linea">{{ csrf_campo() }}
+          <input type="hidden" name="accion" value="cambiar_rol"><input type="hidden" name="id" value="{{ u.id }}">
+          <select id="rol-{{ u.id }}" name="rol" aria-label="Rol de {{ u.usuario }}">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == u.rol }}>{{ r | rol_texto }}</option>{% endfor %}</select>
+          <button type="submit" class="mini secundario">Aplicar</button>
         </form>
-        <form method="post">
-          {{ csrf_campo() }}<input type="hidden" name="accion" value="{{ 'desactivar' if u.activo else 'activar' }}"><input type="hidden" name="id" value="{{ u.id }}">
-          <button class="mini">{{ 'desactivar' if u.activo else 'activar' }}</button>
-        </form>
-        {% else %}<span class="sutil">(su cuenta)</span>{% endif %}
       </td>
+      <td>
+        <form method="post">{{ csrf_campo() }}
+          <input type="hidden" name="accion" value="{{ 'desactivar' if u.activo else 'activar' }}"><input type="hidden" name="id" value="{{ u.id }}">
+          <button type="submit" class="mini {{ 'peligro' if u.activo else '' }}">{{ 'Desactivar' if u.activo else 'Activar' }}</button>
+        </form>
+      </td>
+      {% else %}
+      <td colspan="2" class="sutil">Su propia cuenta (no se modifica desde aquí)</td>
+      {% endif %}
     </tr>
     {% endfor %}
+    </tbody>
   </table>
+  </div>
 </section>
 {% endblock %}

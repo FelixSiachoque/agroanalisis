@@ -1,29 +1,51 @@
 {% extends "base.html" %}
+{% block titulo %}Auditoría{% endblock %}
 {% block contenido %}
-<section class="tarjeta">
+<div class="encabezado">
   <h1>Auditoría · quién hizo qué y cuándo</h1>
-  <form method="get" class="fila">
-    <input name="usuario" placeholder="usuario" value="{{ f.usuario }}" aria-label="Usuario">
-    <select name="accion" aria-label="Acción">
-      <option value="">todas las acciones</option>
-      {% for a in acciones %}<option value="{{ a.accion }}" {{ 'selected' if a.accion == f.accion }}>{{ a.accion }} ({{ a.n }})</option>{% endfor %}
-    </select>
-    <select name="resultado" aria-label="Resultado"><option value="">todos</option>
-      {% for r in resultados %}<option {{ 'selected' if r == f.resultado }}>{{ r }}</option>{% endfor %}</select>
-    <input type="date" name="desde" value="{{ f.desde }}" aria-label="Desde">
-    <input type="date" name="hasta" value="{{ f.hasta }}" aria-label="Hasta">
-    <button>Filtrar</button>
-    <a class="boton" href="{{ url_for('auditoria_csv', **f) }}">Exportar reporte CSV</a>
+  <div class="acciones">
     <a class="boton" href="{{ url_for('verificar_auditoria') }}">Verificar cadena</a>
+    <a class="boton secundario" href="{{ url_for('auditoria_csv', **f) }}">Exportar CSV</a>
+  </div>
+</div>
+
+<section class="tarjeta">
+  <form method="get" class="filtros" aria-label="Filtros de auditoría">
+    <div class="campo"><label for="f-usuario">Usuario</label><input id="f-usuario" name="usuario" type="text" value="{{ f.usuario }}"></div>
+    <div class="campo"><label for="f-accion">Acción</label>
+      <select id="f-accion" name="accion"><option value="">Todas</option>
+        {% for a in acciones %}<option value="{{ a.accion }}" {{ 'selected' if a.accion == f.accion }}>{{ a.accion }} ({{ a.n }})</option>{% endfor %}
+      </select></div>
+    <div class="campo"><label for="f-resultado">Resultado</label>
+      <select id="f-resultado" name="resultado"><option value="">Todos</option>
+        {% for r in resultados %}<option value="{{ r }}" {{ 'selected' if r == f.resultado }}>{{ r }}</option>{% endfor %}
+      </select></div>
+    <div class="campo"><label for="f-desde">Desde</label><input id="f-desde" type="date" name="desde" value="{{ f.desde }}"></div>
+    <div class="campo"><label for="f-hasta">Hasta</label><input id="f-hasta" type="date" name="hasta" value="{{ f.hasta }}"></div>
+    <div class="campo"><button type="submit">Filtrar</button> <a href="{{ url_for('auditoria') }}">Limpiar</a></div>
   </form>
+</section>
+
+<section class="tarjeta">
+  <p class="sutil">Se muestran los últimos {{ eventos | length }} eventos (máximo 300; el CSV exporta hasta 10 000). Fechas en UTC.</p>
+  {% if eventos %}
+  <div class="tabla-desplazable">
   <table>
-    <tr><th>#</th><th>Fecha</th><th>Usuario</th><th>Rol</th><th>Acción</th><th>Recurso</th><th>Resultado</th><th>Detalle</th><th>IP</th></tr>
+    <thead><tr><th scope="col" class="num">Seq</th><th scope="col">Fecha (UTC)</th><th scope="col">Usuario</th><th scope="col">Rol</th><th scope="col">Acción</th>
+      <th scope="col">Recurso</th><th scope="col">Resultado</th><th scope="col">Detalle</th><th scope="col">IP</th></tr></thead>
+    <tbody>
     {% for e in eventos %}
     <tr class="res-{{ e.resultado }}">
-      <td>{{ e.id }}</td><td>{{ e.fecha.strftime('%Y-%m-%d %H:%M:%S') }}</td><td>{{ e.usuario }}</td><td>{{ e.rol or '' }}</td>
-      <td><code>{{ e.accion }}</code></td><td>{{ e.recurso or '' }}</td><td>{{ e.resultado }}</td><td>{{ e.detalle }}</td><td>{{ e.ip or '' }}</td>
+      <td class="num" title="evento #{{ e.id }} · hash {{ e.hash[:16] }}…">{{ e.seq }}</td>
+      <td>{{ e.fecha.strftime('%Y-%m-%d %H:%M:%S') }}</td><td>{{ e.usuario }}</td><td>{{ e.rol | rol_texto if e.rol else '' }}</td>
+      <td><code>{{ e.accion }}</code></td><td>{{ e.recurso or '' }}</td>
+      <td><span class="resultado {{ e.resultado }}">{{ e.resultado }}</span></td>
+      <td>{{ e.detalle }}</td><td>{{ e.ip or '' }}</td>
     </tr>
     {% endfor %}
+    </tbody>
   </table>
+  </div>
+  {% else %}<p class="vacio">Ningún evento coincide con los filtros.</p>{% endif %}
 </section>
 {% endblock %}

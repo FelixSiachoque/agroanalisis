@@ -3,30 +3,48 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AgroAnálisis Sugamuxi</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+  <title>{% block titulo %}{% endblock %}{{ ' · ' if self.titulo() }}AgroAnálisis Sugamuxi</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css', v=v) }}">
+  {% block cabeza %}{% endblock %}
+  <script src="{{ url_for('static', filename='estado.js', v=v) }}" defer></script>
 </head>
-<body>
-<header>
-  <div class="marca">🌱 AgroAnálisis <span>Sugamuxi</span></div>
-  {% if g.usuario %}
-  <nav>
-    <a href="{{ url_for('panel') }}">Mis trabajos</a>
-    {% if puede('ver_todos') %}<a href="{{ url_for('operacion') }}">Operación</a>{% endif %}
-    {% if puede('ver_todos') %}<a href="{{ url_for('recursos_panel') }}">Recursos</a>{% endif %}
-    {% if puede('gestionar_usuarios') %}<a href="{{ url_for('usuarios') }}">Usuarios</a>{% endif %}
-    {% if puede('ver_auditoria') %}<a href="{{ url_for('auditoria') }}">Auditoría</a><a href="{{ url_for('reglas') }}">Reglas</a>{% endif %}
-    <span class="quien">{{ g.usuario.usuario }} <em class="rol rol-{{ g.usuario.rol }}">{{ g.usuario.rol }}</em></span>
-    <form method="post" action="{{ url_for('logout') }}">{{ csrf_campo() }}<button class="enlace">Salir</button></form>
-  </nav>
-  {% endif %}
+<body {% block atributos_body %}{% endblock %}>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
+<header class="barra">
+  <div class="contenedor">
+    <a class="marca" href="{{ url_for('panel') if g.usuario else url_for('login') }}">AgroAnálisis <span>Sugamuxi</span></a>
+    {% if g.usuario %}
+    {# El menú se adapta al rol solo por comodidad: la autorización real se valida en el servidor. #}
+    {% set ep = request.endpoint %}
+    <nav class="menu" aria-label="Principal">
+      <ul>
+        <li><a href="{{ url_for('panel') }}" {{ 'aria-current=page' if ep in ('panel', 'detalle') }}>Mis trabajos</a></li>
+        {% if puede('ver_todos') %}
+        <li><a href="{{ url_for('operacion') }}" {{ 'aria-current=page' if ep == 'operacion' }}>Operación</a></li>
+        <li><a href="{{ url_for('recursos_panel') }}" {{ 'aria-current=page' if ep == 'recursos_panel' }}>Recursos</a></li>
+        {% endif %}
+        {% if puede('gestionar_usuarios') %}
+        <li><a href="{{ url_for('usuarios') }}" {{ 'aria-current=page' if ep == 'usuarios' }}>Usuarios</a></li>
+        {% endif %}
+        {% if puede('ver_auditoria') %}
+        <li><a href="{{ url_for('auditoria') }}" {{ 'aria-current=page' if ep in ('auditoria', 'verificar_auditoria') }}>Auditoría</a></li>
+        <li><a href="{{ url_for('reglas') }}" {{ 'aria-current=page' if ep == 'reglas' }}>Reglas</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    <div class="cuenta">
+      <span>{{ g.usuario.usuario }} <span class="rol">{{ g.usuario.rol | rol_texto }}</span></span>
+      <form method="post" action="{{ url_for('logout') }}">{{ csrf_campo() }}<button type="submit">Salir</button></form>
+    </div>
+    {% endif %}
+  </div>
 </header>
-<main>
+<main id="contenido" class="contenedor">
   {% for cat, msg in get_flashed_messages(with_categories=true) %}
-    <div class="aviso {{ cat }}">{{ msg }}</div>
+    <div class="aviso {{ cat }}" role="{{ 'alert' if cat == 'error' else 'status' }}">{{ msg }}</div>
   {% endfor %}
   {% block contenido %}{% endblock %}
 </main>
-<footer>Laboratorio de análisis de suelos · organización ficticia · Proyecto Sistemas Operativos UPTC 2026</footer>
+<footer class="pie">Laboratorio de análisis de suelos (organización ficticia) · Proyecto final de Sistemas Operativos · UPTC 2026</footer>
 </body>
 </html>
