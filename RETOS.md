@@ -6,13 +6,13 @@ Cada reto dura 5 a 10 minutos y lo hace **un solo integrante**. Todo se hace en 
 1. En AWS Academy, abre el Learner Lab, dale *Start Lab* y espera el punto verde. Luego haz clic en **AWS** para abrir la consola.
 2. Abre **CloudShell** (el ícono `>_` arriba a la derecha) y ejecuta:
    ```bash
-   ssh -i ~/agroanalisis-key.pem ubuntu@54.242.22.245
+   ssh -i ~/agroanalisis-key.pem ubuntu@<IP_PUBLICA>
    sudo -iu plataforma
    cd /opt/agroanalisis
    ```
 3. Si el SSH se queda colgado, probablemente cambió la IP de CloudShell. Autorízala con:
    ```bash
-   aws ec2 authorize-security-group-ingress --group-id sg-0d97fec9a23d2f172 --protocol tcp --port 22 --cidr $(curl -s https://checkip.amazonaws.com)/32
+   aws ec2 authorize-security-group-ingress --group-id "$(aws ec2 describe-security-groups --filters Name=group-name,Values=agroanalisis-sg --query 'SecurityGroups[0].GroupId' --output text)" --protocol tcp --port 22 --cidr $(curl -s https://checkip.amazonaws.com)/32
    ```
 4. Si cambió la IP **del servidor** (pasa cuando el lab se apaga y se vuelve a encender), consulta la nueva con:
    ```bash

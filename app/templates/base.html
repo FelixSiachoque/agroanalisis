@@ -13,6 +13,7 @@
   <nav>
     <a href="{{ url_for('panel') }}">Mis trabajos</a>
     {% if puede('ver_todos') %}<a href="{{ url_for('operacion') }}">Operación</a>{% endif %}
+    {% if puede('ver_todos') %}<a href="{{ url_for('recursos_panel') }}">Recursos</a>{% endif %}
     {% if puede('gestionar_usuarios') %}<a href="{{ url_for('usuarios') }}">Usuarios</a>{% endif %}
     {% if puede('ver_auditoria') %}<a href="{{ url_for('auditoria') }}">Auditoría</a><a href="{{ url_for('reglas') }}">Reglas</a>{% endif %}
     <span class="quien">{{ g.usuario.usuario }} <em class="rol rol-{{ g.usuario.rol }}">{{ g.usuario.rol }}</em></span>

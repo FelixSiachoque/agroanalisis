@@ -5,8 +5,12 @@
 # Uso:  bash crear_infra_aws.sh            (ADMIN_IPS="1.2.3.4/32 5.6.7.8/32" para autorizar más IPs a SSH)
 set -euo pipefail
 NOMBRE=agroanalisis
+# t3.small (2 GB) recomendado; t2.micro (1 GB) también funciona con los límites de docker-compose.yml (832 MB)
 TIPO=${TIPO:-t3.small}
-MI_IP=$(curl -s https://checkip.amazonaws.com)
+MI_IP=$(curl -fsS https://checkip.amazonaws.com | tr -d '[:space:]')
+if ! [[ "$MI_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "No se pudo averiguar la IP pública de administración (resultado: '$MI_IP')"; exit 1
+fi
 ADMIN_IPS=${ADMIN_IPS:-"$MI_IP/32"}
 
 echo "== AMI oficial de Ubuntu 24.04 (Canonical)"
@@ -33,12 +37,13 @@ if [ "$SG" = "None" ]; then
   aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 80 --cidr 0.0.0.0/0 > /dev/null
 fi
 for ip in $ADMIN_IPS; do
-  aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 22 --cidr "$ip" > /dev/null 2>&1 || true
+  aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 22 --cidr "$ip" > /dev/null 2>&1     || echo "   (la regla SSH para $ip ya existía)"
 done
 echo "   $SG  (22 desde: $ADMIN_IPS; 80 desde: 0.0.0.0/0)"
 
 echo "== Instancia EC2 ($TIPO)"
-curl -s -o /tmp/user_data.sh https://raw.githubusercontent.com/FelixSiachoque/agroanalisis/main/infra/user_data.sh
+curl -fsS -o /tmp/user_data.sh https://raw.githubusercontent.com/FelixSiachoque/agroanalisis/main/infra/user_data.sh
+grep -q "bootstrap_ec2.sh" /tmp/user_data.sh || { echo "user_data.sh descargado no es válido"; exit 1; }
 ID=$(aws ec2 run-instances --image-id "$AMI" --instance-type "$TIPO" --key-name $NOMBRE-key \
   --security-group-ids "$SG" --user-data file:///tmp/user_data.sh \
   --block-device-mappings '[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":20,"VolumeType":"gp3","Encrypted":true}}]' \

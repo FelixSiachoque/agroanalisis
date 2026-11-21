@@ -1,2 +1,6 @@
 .env
+*.pem
+*.key
+.git
 __pycache__
+*.pyc

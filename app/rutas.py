@@ -11,6 +11,7 @@ from flask import abort, flash, g, jsonify, redirect, render_template, request, 
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import config
+import recursos
 import reglas_negocio
 from app import app
 from auditoria import auditar
@@ -261,6 +262,21 @@ def operacion():
     trabajos = [t for t in trabajos if reglas_negocio.evaluar_acceso(contexto(trabajo=t)).permitido]
     resumen = consulta("SELECT estado, count(*) AS n FROM trabajos GROUP BY estado ORDER BY estado")
     return render_template("operacion.html", trabajos=trabajos, resumen=resumen, estado=estado)
+
+
+@app.get("/recursos")
+@requiere("ver_todos")
+def recursos_panel():
+    """Consumo de RAM/CPU/procesos/disco frente a los límites de docker-compose.yml (leído de cgroups v2)."""
+    return render_template("recursos.html", app_r=recursos.recursos_app(config.MAX_MB),
+                           workers=recursos.recursos_workers(config.MAX_MB), general=recursos.recursos_generales())
+
+
+@app.get("/api/recursos")
+@requiere("ver_todos")
+def api_recursos():
+    return jsonify(app=recursos.recursos_app(config.MAX_MB), workers=recursos.recursos_workers(config.MAX_MB),
+                   general=recursos.recursos_generales())
 
 
 # ---------------------------------------------------------------- API JSON (pruebas y estado en vivo)

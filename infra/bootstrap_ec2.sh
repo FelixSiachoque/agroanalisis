@@ -36,7 +36,10 @@ systemctl enable docker
 
 echo "== 4. Cuenta de servicio no privilegiada 'plataforma' =="
 id plataforma >/dev/null 2>&1 || useradd -m -s /bin/bash plataforma
-usermod -aG docker plataforma          # puede manejar contenedores, pero NO tiene sudo
+# OJO (dicho con honestidad en la sustentación): pertenecer al grupo docker permite manejar contenedores,
+# y quien controla Docker puede llegar a root del servidor. 'plataforma' no tiene sudo, pero su llave y su
+# contraseña deben protegerse como si fueran de administrador. Alternativa más estricta: Docker rootless.
+usermod -aG docker plataforma
 mkdir -p /opt/agroanalisis
 chown plataforma:plataforma /opt/agroanalisis
 chmod 750 /opt/agroanalisis
@@ -49,14 +52,17 @@ KbdInteractiveAuthentication no
 MaxAuthTries 3
 X11Forwarding no
 EOF
-systemctl restart ssh
+# Validar la configuración ANTES de reiniciar: un error aquí dejaría el servidor sin acceso SSH
+sshd -t && systemctl restart ssh
 
 echo "== 6. Firewall del sistema operativo (UFW) =="
 ufw default deny incoming
 ufw default allow outgoing
-ufw allow OpenSSH
+ufw limit OpenSSH          # permite SSH pero frena conexiones repetidas (más de 6 en 30 s)
 ufw allow 80/tcp
 ufw --force enable
+# Nota: Docker publica el puerto 80 con sus propias reglas de iptables (por fuera de UFW).
+# El filtro que realmente limita quién llega a la instancia es el Security Group de AWS.
 
 echo "== 7. fail2ban: bloquea IPs que fallan el login SSH =="
 systemctl enable --now fail2ban

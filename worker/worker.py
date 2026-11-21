@@ -79,7 +79,7 @@ def auditar(con, accion, detalle, recurso=None, resultado="permitido"):
 
 
 # ---------------------------------------------------------------- latido
-def latido(con, trabajo_actual=None, estado="activo", procesado=False):
+def latido(con, trabajo_actual=None, estado="activo", procesado=False, arranque=False):
     """Señal de vida: tabla 'workers' (panel de Recursos) + archivo /tmp/latido (healthcheck)."""
     m = leer_metricas()
     sql(con, """
@@ -88,12 +88,13 @@ def latido(con, trabajo_actual=None, estado="activo", procesado=False):
         VALUES (%(n)s, %(pid)s, %(e)s, %(t)s, %(mb)s, %(mm)s, %(cl)s, %(cu)s, %(p)s)
         ON CONFLICT (nombre) DO UPDATE SET pid = EXCLUDED.pid, estado = EXCLUDED.estado,
             ultimo_latido = now(), trabajo_actual = EXCLUDED.trabajo_actual,
-            procesados = workers.procesados + %(inc)s,
+            iniciado   = CASE WHEN %(arr)s THEN now() ELSE workers.iniciado END,
+            procesados = CASE WHEN %(arr)s THEN 0 ELSE workers.procesados + %(inc)s END,
             memoria_bytes = EXCLUDED.memoria_bytes, memoria_max = EXCLUDED.memoria_max,
             cpu_limite = EXCLUDED.cpu_limite, cpu_uso_usec = EXCLUDED.cpu_uso_usec, pids = EXCLUDED.pids
         """, {"n": NOMBRE, "pid": os.getpid(), "e": estado, "t": trabajo_actual, "mb": m["memoria_bytes"],
               "mm": m["memoria_max"], "cl": m["cpu_limite"], "cu": m["cpu_uso_usec"], "p": m["pids"],
-              "inc": 1 if procesado else 0})
+              "inc": 1 if procesado else 0, "arr": arranque})
     if trabajo_actual:
         sql(con, "UPDATE trabajos SET latido = now() WHERE id = %s AND worker = %s", (trabajo_actual, NOMBRE))
     ARCHIVO_LATIDO.touch()
@@ -283,7 +284,7 @@ def main():
     while seguir:
         try:
             with psycopg.connect(DSN, row_factory=dict_row, autocommit=True) as con:
-                latido(con)
+                latido(con, arranque=True)
                 auditar(con, "worker_inicio", f"pid={os.getpid()}")
                 recuperar_interrumpidos(con, al_arrancar=True)
                 ultima_revision = time.monotonic()

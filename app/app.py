@@ -59,6 +59,16 @@ def plantillas():
     }
 
 
+ESTADOS_TEXTO = {"pendiente": "Pendiente", "en_ejecucion": "En ejecución", "completado": "Completado",
+                 "fallido": "Fallido"}
+
+
+@app.template_filter("estado_texto")
+def estado_texto(estado):
+    """'en_ejecucion' -> 'En ejecución' (en pantalla nunca se muestran los nombres internos)."""
+    return ESTADOS_TEXTO.get(estado, estado)
+
+
 # Registrar las rutas (se importan después de crear 'app' porque la usan en sus decoradores)
 import rutas         # noqa: E402,F401
 import rutas_admin   # noqa: E402,F401

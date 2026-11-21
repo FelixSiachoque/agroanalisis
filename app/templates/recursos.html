@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block titulo %}Recursos{% endblock %}
+{% macro mb(b) %}{{ '%.0f' % (b / 1048576) if b is not none else '—' }}{% endmacro %}
+{% block contenido %}
+<h1>Recursos del servidor</h1>
+<p class="sutil">Datos leídos de cgroups v2 (<code>/sys/fs/cgroup</code>) dentro de cada contenedor y de la base de datos.
+  Los límites se definen en <code>docker-compose.yml</code> (<code>mem_limit</code>, <code>cpus</code>, <code>pids_limit</code>).</p>
+
+<section class="tarjeta">
+  <h2>Cola de trabajos</h2>
+  <div class="cifras">
+    {% for estado, n in general.estados.items() %}
+    <div class="cifra"><span class="numero">{{ n }}</span><span class="estado {{ estado }}">{{ estado | estado_texto }}</span></div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="tarjeta">
+  <h2>Contenedor app (web)</h2>
+  <table class="ficha">
+    <tr><th>Memoria</th><td>{{ mb(app_r.memoria_bytes) }} MB de {{ mb(app_r.memoria_max) if app_r.memoria_max else 'sin límite' }} MB
+      {% if app_r.mem_pct is not none %}<meter min="0" max="100" low="60" high="85" optimum="20" value="{{ app_r.mem_pct }}">{{ app_r.mem_pct }} %</meter> {{ app_r.mem_pct }} %{% endif %}</td></tr>
+    <tr><th>CPU</th><td>{{ app_r.cpu_pct if app_r.cpu_pct is not none else '—' }} % ahora · límite {{ app_r.cpu_limite or 'sin límite' }} CPU</td></tr>
+    <tr><th>Procesos</th><td>{{ app_r.pids or '—' }} de {{ app_r.pids_max or 'sin límite' }}</td></tr>
+  </table>
+  <p class="interpretacion">{{ app_r.frase }}</p>
+</section>
+
+<section class="tarjeta">
+  <h2>Workers (procesamiento)</h2>
+  {% if workers %}
+  <div class="tabla-desplazable">
+  <table>
+    <thead><tr><th scope="col">Worker</th><th scope="col">Estado</th><th scope="col">Último latido</th><th scope="col">Memoria</th>
+      <th scope="col">CPU promedio</th><th scope="col">Procesos</th><th scope="col">Trabajos procesados</th><th scope="col">Trabajo actual</th></tr></thead>
+    <tbody>
+    {% for w in workers %}
+    <tr>
+      <td><code>{{ w.nombre }}</code></td>
+      <td><span class="estado {{ 'completado' if w.vivo else 'fallido' }}">{{ 'activo' if w.vivo else 'sin latido' }}</span></td>
+      <td>hace {{ w.hace_s }} s</td>
+      <td>{{ mb(w.memoria_bytes) }} / {{ mb(w.memoria_max) if w.memoria_max else '∞' }} MB
+        {% if w.mem_pct is not none %}<meter min="0" max="100" low="60" high="85" optimum="20" value="{{ w.mem_pct }}">{{ w.mem_pct }} %</meter>{% endif %}</td>
+      <td>{{ w.cpu_promedio_pct if w.cpu_promedio_pct is not none else '—' }} % de {{ w.cpu_limite or '∞' }} CPU</td>
+      <td>{{ w.pids or '—' }}</td><td>{{ w.procesados }}</td>
+      <td>{% if w.trabajo_actual %}<a href="{{ url_for('detalle', trabajo_id=w.trabajo_actual) }}">#{{ w.trabajo_actual }}</a>{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% for w in workers if w.vivo %}<p class="interpretacion">{{ w.frase }}</p>{% endfor %}
+  {% if not (workers | selectattr('vivo') | list) %}<p class="aviso error">Ningún worker activo: los trabajos se quedarán en cola. Revise <code>docker compose ps worker</code>.</p>{% endif %}
+  {% else %}<p class="sutil">Ningún worker se ha registrado todavía.</p>{% endif %}
+</section>
+
+<section class="tarjeta">
+  <h2>Almacenamiento y base de datos</h2>
+  <table class="ficha">
+    <tr><th>Volumen /data</th><td>{{ '%.1f' % (general.disco_usado / 1073741824) }} GB usados de {{ '%.1f' % (general.disco_total / 1073741824) }} GB
+      <meter min="0" max="100" low="70" high="90" optimum="20" value="{{ general.disco_pct }}">{{ general.disco_pct }} %</meter> {{ general.disco_pct }} %</td></tr>
+    <tr><th>Base de datos</th><td>{{ '%.1f' % (general.bd_bytes / 1048576) }} MB · {{ general.bd_conexiones }} conexiones abiertas</td></tr>
+  </table>
+  <p class="sutil">La memoria y CPU de <code>db</code> y <code>proxy</code> se ven con <code>docker stats --no-stream</code> en el servidor
+    (la app no tiene acceso al cgroup de otros contenedores, a propósito).</p>
+</section>
+<noscript><p class="sutil">Recargue la página para ver datos actualizados.</p></noscript>
+{% endblock %}
