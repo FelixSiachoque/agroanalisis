@@ -4,14 +4,15 @@ Cada reto lo resuelve **un solo integrante**, sin que nadie más toque el teclad
 
 ## 0. Antes de empezar
 
-**Entrar al servidor** (AWS Academy → *Start Lab* → punto verde → *AWS* → CloudShell `>_`):
+**Entrar al servidor:** AWS Academy → *Start Lab* (punto verde) → *AWS* → CloudShell `>_` → escribir:
 ```bash
-ssh -i ~/agroanalisis-key.pem ubuntu@<IP_PUBLICA>
-sudo -iu plataforma
-cd /opt/agroanalisis
+entrar
 ```
-- **IP del servidor:** **34.200.132.2** (IP elástica fija: se conserva al apagar y encender el lab). Para consultarla: `aws ec2 describe-instances --filters Name=tag:Name,Values=agroanalisis --query 'Reservations[].Instances[].PublicIpAddress' --output text`
-- **SSH se queda colgado** (cambió la IP de CloudShell): `aws ec2 authorize-security-group-ingress --group-id "$(aws ec2 describe-security-groups --filters Name=group-name,Values=agroanalisis-sg --query 'SecurityGroups[0].GroupId' --output text)" --protocol tcp --port 22 --cidr $(curl -s https://checkip.amazonaws.com)/32`
+Un solo comando: si la instancia está apagada la enciende, autoriza el SSH **solo** para la IP actual de CloudShell (y borra las viejas) y deja la terminal como `plataforma` en `/opt/agroanalisis`. Se instala una vez con `scripts/instalar_entrar_cloudshell.sh` (ya está instalado en el CloudShell de Felix). Para salir: `exit`.
+
+- **Lo que hace `entrar` por dentro** (por si el profe pregunta o hay que hacerlo a mano): `ssh -i ~/agroanalisis-key.pem ubuntu@34.200.132.2`, luego `sudo -iu plataforma` y `cd /opt/agroanalisis`.
+- **Plan B (si CloudShell falla):** consola de AWS → EC2 → Instancias → `agroanalisis` → **Conectar** → pestaña *EC2 Instance Connect* → usuario `ubuntu` → *Conectar*. Se abre una terminal del servidor en el navegador; luego `sudo -iu plataforma` y `cd /opt/agroanalisis`.
+- **IP del servidor:** **34.200.132.2** (IP elástica fija: se conserva al apagar y encender el lab).
 
 En local todo es igual, pero sin SSH: los comandos se ejecutan en la carpeta del proyecto. En los ejemplos, `IP` es `localhost` o la IP pública.
 
