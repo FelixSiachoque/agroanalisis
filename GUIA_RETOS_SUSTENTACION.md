@@ -10,7 +10,7 @@ ssh -i ~/agroanalisis-key.pem ubuntu@<IP_PUBLICA>
 sudo -iu plataforma
 cd /opt/agroanalisis
 ```
-- **Nueva IP del servidor** (cambia cada vez que se reinicia el lab): `aws ec2 describe-instances --filters Name=tag:Name,Values=agroanalisis --query 'Reservations[].Instances[].PublicIpAddress' --output text`
+- **IP del servidor:** **34.200.132.2** (IP elástica fija: se conserva al apagar y encender el lab). Para consultarla: `aws ec2 describe-instances --filters Name=tag:Name,Values=agroanalisis --query 'Reservations[].Instances[].PublicIpAddress' --output text`
 - **SSH se queda colgado** (cambió la IP de CloudShell): `aws ec2 authorize-security-group-ingress --group-id "$(aws ec2 describe-security-groups --filters Name=group-name,Values=agroanalisis-sg --query 'SecurityGroups[0].GroupId' --output text)" --protocol tcp --port 22 --cidr $(curl -s https://checkip.amazonaws.com)/32`
 
 En local todo es igual, pero sin SSH: los comandos se ejecutan en la carpeta del proyecto. En los ejemplos, `IP` es `localhost` o la IP pública.
@@ -68,7 +68,7 @@ print("GET /admin/usuarios ->", s.get(U + "/admin/usuarios", allow_redirects=Fal
 EOF
 ```
 
-**En la auditoría** (coordinador → Auditoría → usuario `prueba1`): aparecen `crear_usuario`, `login_ok` y `acceso_denegado` (resultado *denegado*, recurso `/admin/usuarios`).
+**En la auditoría** (coordinador → Auditoría): filtrando por usuario `prueba1` aparecen `login_ok` y `acceso_denegado` (resultado *denegado*, recurso `/admin/usuarios`). El `crear_usuario` queda a nombre de quien lo creó: fíltralo por usuario `coordinador` o por la acción `crear_usuario`.
 
 **Qué decir:** "Ocultar el menú es solo comodidad. La protección real es `@requiere("gestionar_usuarios")`, que se valida en el servidor; además, el rol se lee de la base de datos en cada petición, así que si mañana desactivo la cuenta, aplica de inmediato."
 

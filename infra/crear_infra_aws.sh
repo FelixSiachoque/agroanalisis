@@ -51,7 +51,11 @@ ID=$(aws ec2 run-instances --image-id "$AMI" --instance-type "$TIPO" --key-name 
   --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$NOMBRE}]" \
   --query 'Instances[0].InstanceId' --output text)
 aws ec2 wait instance-running --instance-ids "$ID"
-IP=$(aws ec2 describe-instances --instance-ids "$ID" --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+# IP elástica: la IP pública queda FIJA aunque se apague y encienda el laboratorio
+ALLOC=$(aws ec2 allocate-address --domain vpc \
+  --tag-specifications "ResourceType=elastic-ip,Tags=[{Key=Name,Value=$NOMBRE}]" --query AllocationId --output text)
+aws ec2 associate-address --instance-id "$ID" --allocation-id "$ALLOC" > /dev/null
+IP=$(aws ec2 describe-addresses --allocation-ids "$ALLOC" --query 'Addresses[0].PublicIp' --output text)
 
 echo
 echo "LISTO: instancia $ID  IP pública $IP"

@@ -120,7 +120,7 @@ El script crea el par de llaves, el Security Group (22 solo desde la IP de admin
 
 **Manual:**
 ```bash
-ssh -i labsuser.pem ubuntu@<IP_PUBLICA>
+ssh -i ~/agroanalisis-key.pem ubuntu@34.200.132.2   # desde AWS CloudShell
 git clone <URL_DEL_REPO> /tmp/agro && sudo bash /tmp/agro/infra/bootstrap_ec2.sh   # hardening del host
 sudo -iu plataforma
 git clone <URL_DEL_REPO> /opt/agroanalisis && cd /opt/agroanalisis
