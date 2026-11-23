@@ -1,6 +1,8 @@
 # AgroAnálisis Sugamuxi · Plataforma segura de procesamiento de archivos
 
-Proyecto final de Sistemas Operativos (UPTC Sogamoso, 2026).
+Proyecto final de Sistemas Operativos (UPTC Sogamoso, 2026) · Docente: Mgtr. Fredy Alarcón
+
+**Integrantes:** Didier Cristancho · Derick Rios · Juan Salamanca · Felix Siachoque
 
 AgroAnálisis Sugamuxi es un **laboratorio ficticio de análisis de suelos**. Los agricultores envían resultados de laboratorio (`.csv`) e informes de campo (`.txt`). Un trabajador en segundo plano los procesa (estadísticas por columna, clasificación de pH, conteo de palabras y huella SHA-256), y cada agricultor descarga **solo sus** resultados. Los técnicos supervisan la cola y el coordinador administra usuarios, auditoría y reglas.
 
