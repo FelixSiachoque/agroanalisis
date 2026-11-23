@@ -10,7 +10,7 @@
 #   2. Recrea el contenedor db para que reciba esas variables (los datos están en el volumen).
 #   3. Ejecuta cada db/migraciones/NNN_*.sql en orden, como superusuario.
 #   4. Ejecuta db/roles.sql (usuarios agro_web y agro_worker con mínimo privilegio).
-#   5. Reinicia app y worker para que se conecten con sus nuevos usuarios.
+#   5. Recrea todo el stack (proxy, app, worker y db) con la versión nueva; los datos se conservan.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -44,6 +44,9 @@ docker compose exec -T db sh -c \
 
 ./scripts/detectar_entorno.sh
 
-echo "== Reiniciando app y worker"
-docker compose up -d --build app worker
+echo "== Recreando todo el stack con la configuración nueva (los volúmenes y los datos se conservan)"
+# Se baja y se sube completo: así el proxy, las redes y los contenedores quedan todos en la versión nueva.
+# Si solo se recrean app y worker, el proxy viejo puede quedar apuntando a contenedores que ya no existen.
+docker compose down
+docker compose up -d --build --wait
 echo "Migraciones aplicadas correctamente."
