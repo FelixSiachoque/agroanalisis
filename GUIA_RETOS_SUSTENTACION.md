@@ -4,19 +4,22 @@ Cada reto lo resuelve **un solo integrante**, sin que nadie más toque el teclad
 
 ## 0. Antes de empezar
 
-**Entrar al servidor (forma principal: EC2 Instance Connect, desde el navegador, sin llave):**
-1. AWS Academy → *Start Lab* → esperar el punto verde → clic en *AWS*.
-2. Buscar **EC2** → *Instancias* → marcar `agroanalisis` (debe decir *En ejecución* y *2/2 comprobaciones*; si dice *Detenida*: *Estado de la instancia → Iniciar* y esperar ~1 min).
-3. Botón **Conectar** → pestaña **EC2 Instance Connect** → usuario `ubuntu` → **Conectar**. Se abre la terminal del servidor en otra pestaña.
-4. Escribir:
+**Entrar al servidor (forma principal: CloudShell + SSH con llave):**
+1. AWS Academy → *Start Lab* → esperar el punto verde → clic en *AWS* → ícono de CloudShell `>_` (arriba a la derecha).
+2. En CloudShell:
 ```bash
-sudo -iu plataforma
+abrir_ssh                                         # enciende la instancia si está apagada y autoriza el puerto 22 solo para la IP de este CloudShell
+ssh -i ~/agroanalisis-key.pem ubuntu@34.200.132.2 # entrar con la llave privada (no hay contraseña)
+sudo -iu plataforma                               # pasar al usuario de servicio (sin sudo)
 cd /opt/agroanalisis
 docker compose ps
 ```
+3. Para salir: `exit` (de plataforma) y `exit` (de ubuntu).
 
-- **Alternativa (CloudShell `>_`):** escribir `entrar`. Enciende la instancia si hace falta, autoriza el SSH solo para la IP actual de CloudShell y deja la terminal como `plataforma` en `/opt/agroanalisis` (instalado con `scripts/instalar_entrar_cloudshell.sh`). Por dentro es `ssh -i ~/agroanalisis-key.pem ubuntu@34.200.132.2` + `sudo -iu plataforma`.
-- **Si Instance Connect da error de conexión:** revisar que el grupo de seguridad `agroanalisis-sg` tenga la regla de entrada del puerto 22 con origen `pl-0e4bcff02b13bef1e` (lista de IPs de EC2 Instance Connect). Si no está, usar la alternativa de CloudShell.
+- **Demostrar que sin llave no se puede entrar** (antes del `ssh -i`):
+  `ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password ubuntu@34.200.132.2` → `Permission denied (publickey)`: el servidor ni siquiera ofrece contraseña.
+- **Atajo:** `entrar` hace los pasos 2 completos (abrir_ssh + ssh + plataforma + cd) en un solo comando. Ambos se instalaron una vez con `scripts/instalar_entrar_cloudshell.sh`.
+- **Plan B (si CloudShell falla):** consola EC2 → Instancias → `agroanalisis` → **Conectar** → pestaña **EC2 Instance Connect** → usuario `ubuntu` → **Conectar**; luego `sudo -iu plataforma` y `cd /opt/agroanalisis`. Requiere la regla del puerto 22 con origen `pl-0e4bcff02b13bef1e` en `agroanalisis-sg` (ya está).
 - **IP del servidor:** **34.200.132.2** (IP elástica fija: se conserva al apagar y encender el lab).
 
 En local todo es igual, pero sin SSH: los comandos se ejecutan en la carpeta del proyecto. En los ejemplos, `IP` es `localhost` o la IP pública.

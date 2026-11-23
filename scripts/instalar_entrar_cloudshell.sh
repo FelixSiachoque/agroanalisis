@@ -4,10 +4,11 @@
 #   curl -sO https://raw.githubusercontent.com/FelixSiachoque/agroanalisis/main/scripts/instalar_entrar_cloudshell.sh
 #   bash instalar_entrar_cloudshell.sh && source ~/.bashrc
 #
-# Qué hace "entrar":
-#   1. Si la instancia "agroanalisis" está detenida, la enciende y espera.
-#   2. Autoriza el puerto 22 SOLO para la IP actual de CloudShell (cambia en cada sesión) y borra las IPs viejas.
-#   3. Entra por SSH y abre una terminal como "plataforma" en /opt/agroanalisis.
+# Comandos que instala:
+#   abrir_ssh  1. Si la instancia "agroanalisis" está detenida, la enciende y espera.
+#              2. Autoriza el puerto 22 SOLO para la IP actual de CloudShell (cambia en cada sesión) y borra las IPs viejas.
+#              Después se entra a mano mostrando la llave:  ssh -i ~/agroanalisis-key.pem ubuntu@34.200.132.2
+#   entrar     abrir_ssh + entra por SSH y abre una terminal como "plataforma" en /opt/agroanalisis.
 # Además habilita el plan B: el botón "Conectar → EC2 Instance Connect" de la consola de EC2.
 set -euo pipefail
 
@@ -31,7 +32,7 @@ fi
 sed -i '/# >>> agroanalisis entrar >>>/,/# <<< agroanalisis entrar <<</d' ~/.bashrc
 cat >> ~/.bashrc <<'EOF'
 # >>> agroanalisis entrar >>>
-entrar() {
+abrir_ssh() {
   local SG ID ESTADO IP viejo
   SG=$(aws ec2 describe-security-groups --filters Name=group-name,Values=agroanalisis-sg \
         --query 'SecurityGroups[0].GroupId' --output text)
@@ -50,7 +51,11 @@ entrar() {
     [ "$viejo" != "$IP" ] && aws ec2 revoke-security-group-ingress --group-id "$SG" --protocol tcp --port 22 --cidr "$viejo" > /dev/null 2>&1
   done
   aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 22 --cidr "$IP" > /dev/null 2>&1 || true
-  echo "SSH autorizado solo para $IP. Entrando al servidor como 'plataforma'..."
+  echo "SSH autorizado solo para $IP (puerto 22)."
+}
+entrar() {
+  abrir_ssh || return
+  echo "Entrando al servidor como 'plataforma'..."
   ssh -t agro 'sudo -iu plataforma bash -c "cd /opt/agroanalisis && exec bash"'
 }
 # <<< agroanalisis entrar <<<
@@ -62,5 +67,5 @@ PL=$(aws ec2 describe-managed-prefix-lists --filters "Name=prefix-list-name,Valu
       --query 'PrefixLists[0].PrefixListId' --output text)
 aws ec2 authorize-security-group-ingress --group-id "$SG" \
   --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,PrefixListIds=[{PrefixListId=$PL,Description=EC2-Instance-Connect}]" > /dev/null 2>&1 || true
-echo "Listo. Ejecute:  source ~/.bashrc   y luego:  entrar"
+echo "Listo. Ejecute:  source ~/.bashrc   y luego:  abrir_ssh  (o  entrar  para el atajo)"
 echo "Plan B: consola EC2 → instancia agroanalisis → Conectar → EC2 Instance Connect (usuario ubuntu)."
