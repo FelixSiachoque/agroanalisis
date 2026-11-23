@@ -56,6 +56,10 @@ python3 pruebas/prueba_carga.py "$URL" --trabajos 30 --concurrencia 4 --salida "
 tail -8 "$D/07_carga_2_workers.txt"
 docker compose up -d --scale worker=1 --wait > /dev/null 2>&1
 
+paso "9. Logs de app y worker con un error de procesamiento provocado"
+./scripts/logs_evidencia.sh > "$D/09_logs.txt" 2>&1
+tail -8 "$D/09_logs.txt"
+
 paso "8. Persistencia: bajar y subir todo el stack"
 {
   echo "ANTES:   trabajos=$(sql 'SELECT count(*) FROM trabajos')  usuarios=$(sql 'SELECT count(*) FROM usuarios')  auditoria=$(sql 'SELECT count(*) FROM auditoria')"
