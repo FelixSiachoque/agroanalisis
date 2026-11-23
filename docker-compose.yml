@@ -26,6 +26,7 @@ name: agroanalisis
 
 # Variables comunes de la app (parámetros de reglas de negocio incluidos).
 x-entorno-app: &entorno-app
+  ENTORNO: ${ENTORNO:-Local}
   POSTGRES_DB: ${POSTGRES_DB}
   DB_HOST: db
   DB_USER: agro_web

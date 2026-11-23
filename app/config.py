@@ -27,3 +27,6 @@ DB_DSN = (
 
 # Un worker se considera caído si no da señal de vida en este tiempo (panel de Recursos)
 LATIDO_CADUCO_S = int(os.environ.get("LATIDO_CADUCO_S", "60"))
+
+# Dónde corre la plataforma (lo escribe scripts/detectar_entorno.sh en el .env); se muestra en el pie de página
+ENTORNO = os.environ.get("ENTORNO", "Local")

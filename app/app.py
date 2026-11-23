@@ -68,6 +68,7 @@ VERSION_ESTATICOS = _version_estaticos()
 def plantillas():
     return {
         "v": VERSION_ESTATICOS,
+        "entorno": config.ENTORNO,
         "puede": lambda p: g.usuario is not None and puede(g.usuario["rol"], p),
         "csrf_campo": lambda: Markup(f'<input type="hidden" name="csrf" value="{token_csrf()}">'),
     }

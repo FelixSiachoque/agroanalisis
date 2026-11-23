@@ -23,6 +23,7 @@ sed -e "s/CAMBIAR_DB/$(aleatorio 24)/" \
     .env.example > .env
 
 chmod 600 .env     # solo el dueño puede leerlo
+./scripts/detectar_entorno.sh > /dev/null
 echo ".env creado (permisos 600)."
 echo "  Admin:  usuario 'coordinador'  contraseña: $ADMIN"
 echo "  Demo:   tecnico1 / agricultor1 / agricultor2  contraseña: $DEMO"

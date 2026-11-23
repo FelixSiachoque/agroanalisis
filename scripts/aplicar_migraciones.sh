@@ -42,6 +42,8 @@ docker compose exec -T db sh -c \
   'PGOPTIONS="-c client_min_messages=warning" psql -v ON_ERROR_STOP=1 -q -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v app_pw="$APP_DB_PASSWORD" -v wk_pw="$WORKER_DB_PASSWORD"' \
   < db/roles.sql
 
+./scripts/detectar_entorno.sh
+
 echo "== Reiniciando app y worker"
 docker compose up -d --build app worker
 echo "Migraciones aplicadas correctamente."
