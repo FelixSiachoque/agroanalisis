@@ -25,7 +25,7 @@ python3 pruebas/pruebas_funcionales.py "$URL" --docker > "$D/02_pruebas_funciona
 tail -2 "$D/02_pruebas_funcionales.txt"
 
 paso "3. Pruebas unitarias de reglas de negocio (dentro de la imagen de la app)"
-docker compose run --rm --no-deps -T -v "$PWD/pruebas:/pruebas:ro" app \
+docker compose run --rm --no-deps -T -e PYTHONPATH=/srv -v "$PWD/pruebas:/pruebas:ro" app \
   python /pruebas/test_reglas_negocio.py > "$D/03_pruebas_unitarias.txt" 2>&1
 tail -3 "$D/03_pruebas_unitarias.txt"
 
