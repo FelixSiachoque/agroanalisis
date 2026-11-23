@@ -4,14 +4,19 @@ Cada reto lo resuelve **un solo integrante**, sin que nadie más toque el teclad
 
 ## 0. Antes de empezar
 
-**Entrar al servidor:** AWS Academy → *Start Lab* (punto verde) → *AWS* → CloudShell `>_` → escribir:
+**Entrar al servidor (forma principal: EC2 Instance Connect, desde el navegador, sin llave):**
+1. AWS Academy → *Start Lab* → esperar el punto verde → clic en *AWS*.
+2. Buscar **EC2** → *Instancias* → marcar `agroanalisis` (debe decir *En ejecución* y *2/2 comprobaciones*; si dice *Detenida*: *Estado de la instancia → Iniciar* y esperar ~1 min).
+3. Botón **Conectar** → pestaña **EC2 Instance Connect** → usuario `ubuntu` → **Conectar**. Se abre la terminal del servidor en otra pestaña.
+4. Escribir:
 ```bash
-entrar
+sudo -iu plataforma
+cd /opt/agroanalisis
+docker compose ps
 ```
-Un solo comando: si la instancia está apagada la enciende, autoriza el SSH **solo** para la IP actual de CloudShell (y borra las viejas) y deja la terminal como `plataforma` en `/opt/agroanalisis`. Se instala una vez con `scripts/instalar_entrar_cloudshell.sh` (ya está instalado en el CloudShell de Felix). Para salir: `exit`.
 
-- **Lo que hace `entrar` por dentro** (por si el profe pregunta o hay que hacerlo a mano): `ssh -i ~/agroanalisis-key.pem ubuntu@34.200.132.2`, luego `sudo -iu plataforma` y `cd /opt/agroanalisis`.
-- **Plan B (si CloudShell falla):** consola de AWS → EC2 → Instancias → `agroanalisis` → **Conectar** → pestaña *EC2 Instance Connect* → usuario `ubuntu` → *Conectar*. Se abre una terminal del servidor en el navegador; luego `sudo -iu plataforma` y `cd /opt/agroanalisis`.
+- **Alternativa (CloudShell `>_`):** escribir `entrar`. Enciende la instancia si hace falta, autoriza el SSH solo para la IP actual de CloudShell y deja la terminal como `plataforma` en `/opt/agroanalisis` (instalado con `scripts/instalar_entrar_cloudshell.sh`). Por dentro es `ssh -i ~/agroanalisis-key.pem ubuntu@34.200.132.2` + `sudo -iu plataforma`.
+- **Si Instance Connect da error de conexión:** revisar que el grupo de seguridad `agroanalisis-sg` tenga la regla de entrada del puerto 22 con origen `pl-0e4bcff02b13bef1e` (lista de IPs de EC2 Instance Connect). Si no está, usar la alternativa de CloudShell.
 - **IP del servidor:** **34.200.132.2** (IP elástica fija: se conserva al apagar y encender el lab).
 
 En local todo es igual, pero sin SSH: los comandos se ejecutan en la carpeta del proyecto. En los ejemplos, `IP` es `localhost` o la IP pública.
