@@ -38,7 +38,7 @@ def trabajo(estado="completado", dueno=1, **extra):
 
 @contextlib.contextmanager
 def reglas(**estado):
-    """Cambia temporalmente qué reglas están activas: with reglas(cuota_trabajos_activos=False): ..."""
+    """Cambia temporalmente qué reglas están activas: with ninguna(): ..."""
     antes = {n: c["activa"] for n, c in rn.REGLAS.items()}
     try:
         for nombre, activa in estado.items():
@@ -52,6 +52,11 @@ def reglas(**estado):
 def solo(nombre):
     """Activa SOLO la regla indicada (las demás apagadas) para probarla aislada."""
     return reglas(**{n: (n == nombre) for n in rn.REGLAS})
+
+
+def ninguna():
+    """Apaga TODAS las reglas: así una regla nueva que se agregue no contamina las pruebas de las demás."""
+    return reglas(**{n: False for n in rn.REGLAS})
 
 
 class PruebasEstructura(unittest.TestCase):
@@ -102,7 +107,7 @@ class PruebasCuota(unittest.TestCase):
             self.assertTrue(rn.evaluar_subida(ctx(rol="admin", n_activos=50)).permitido)
 
     def test_inactiva(self):
-        with reglas(cuota_trabajos_activos=False):
+        with ninguna():
             self.assertTrue(rn.evaluar_subida(ctx(n_activos=50)).permitido)
 
 
@@ -124,7 +129,7 @@ class PruebasBorrado(unittest.TestCase):
             self.assertTrue(rn.evaluar_eliminacion(ctx(rol="admin", trabajo=trabajo("completado"))).permitido)
 
     def test_inactiva(self):
-        with reglas(bloquear_borrado_finalizados=False):
+        with ninguna():
             self.assertTrue(rn.evaluar_eliminacion(ctx(trabajo=trabajo("completado"))).permitido)
 
 
@@ -139,7 +144,7 @@ class PruebasCabecera(unittest.TestCase):
             self.assertTrue(rn.evaluar_subida(ctx(extension="txt", texto="informe")).permitido)
 
     def test_inactiva(self):
-        with reglas(cabecera_csv_obligatoria=False):
+        with ninguna():
             self.assertTrue(rn.evaluar_subida(ctx(extension="csv", texto=CSV_SUELOS)).permitido)
 
 
@@ -153,7 +158,7 @@ class PruebasRangos(unittest.TestCase):
             self.assertFalse(rn.evaluar_subida(ctx(extension="csv", texto=CSV_PCT_MALO)).permitido)
 
     def test_inactiva(self):
-        with reglas(rangos_agronomicos_validos=False):
+        with ninguna():
             self.assertTrue(rn.evaluar_subida(ctx(extension="csv", texto=CSV_PH_MALO)).permitido)
 
 
@@ -168,7 +173,7 @@ class PruebasTamanoPorRol(unittest.TestCase):
             self.assertTrue(rn.evaluar_subida(ctx(rol="operador", tamano=int(1.5 * mb))).permitido)
 
     def test_inactiva(self):
-        with reglas(tamano_maximo_por_rol=False):
+        with ninguna():
             self.assertTrue(rn.evaluar_subida(ctx(tamano=10 * 1024 * 1024)).permitido)
 
 
@@ -182,7 +187,7 @@ class PruebasVentana(unittest.TestCase):
             self.assertTrue(rn.evaluar_subida(ctx(rol="operador", ahora=noche)).permitido)
 
     def test_inactiva(self):
-        with reglas(ventana_recepcion=False):
+        with ninguna():
             noche = datetime(2026, 11, 20, 22, 0, tzinfo=rn.HORA_COLOMBIA)
             self.assertTrue(rn.evaluar_subida(ctx(ahora=noche)).permitido)
 
@@ -198,7 +203,7 @@ class PruebasOriginales(unittest.TestCase):
             self.assertTrue(rn.evaluar_descarga(ctx(rol="operador", trabajo=ajeno), "resultado").permitido)
 
     def test_inactiva(self):
-        with reglas(bloquear_descarga_originales_ajenos=False):
+        with ninguna():
             self.assertTrue(rn.evaluar_descarga(ctx(rol="operador", trabajo=trabajo(dueno=2)), "original").permitido)
 
 
@@ -212,7 +217,7 @@ class PruebasConfidenciales(unittest.TestCase):
             self.assertTrue(rn.evaluar_acceso(ctx(rol="operador", trabajo=trabajo(dueno=2))).permitido)
 
     def test_inactiva(self):
-        with reglas(trabajos_confidenciales=False):
+        with ninguna():
             self.assertTrue(rn.evaluar_acceso(ctx(rol="operador", trabajo=trabajo(dueno=2, confidencial=True))).permitido)
 
 
@@ -225,7 +230,7 @@ class PruebasLimiteReprocesos(unittest.TestCase):
             self.assertEqual(d.http, 409)
 
     def test_inactiva(self):
-        with reglas(limite_reprocesos=False):
+        with ninguna():
             self.assertTrue(rn.evaluar_reprocesado(ctx(trabajo=trabajo("fallido", reprocesos=10))).permitido)
 
 

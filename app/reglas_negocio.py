@@ -29,7 +29,7 @@ import io
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 
 def _env(nombre, defecto):

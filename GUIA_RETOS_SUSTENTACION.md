@@ -62,8 +62,9 @@ python3 - <<'EOF'
 import re, requests
 s = requests.Session(); U = "http://localhost"
 t = re.search(r'name="csrf" value="([^"]+)"', s.get(U + "/login").text).group(1)
-s.post(U + "/login", data={"usuario": "prueba1", "clave": "Prueba2026", "csrf": t})
-print("GET /admin/usuarios ->", s.get(U + "/admin/usuarios").status_code)   # 403
+r = s.post(U + "/login", data={"usuario": "prueba1", "clave": "Prueba2026", "csrf": t}, allow_redirects=False)
+print("login ->", r.status_code)                                                          # 302 = sesión iniciada
+print("GET /admin/usuarios ->", s.get(U + "/admin/usuarios", allow_redirects=False).status_code)   # 403
 EOF
 ```
 
@@ -155,9 +156,9 @@ def obtener_trabajo_autorizado(trabajo_id, permiso_global):
 |---|---|---|---|
 | 1. `es_dueno` compara mal: `t["id"] == g.usuario["id"]`, `es_dueno = True` o compara contra un dato que manda el navegador (`request.args`) | `agricultor2` ve trabajos ajenos | `grep -n "es_dueno =" app/seguridad.py` | `t["usuario_id"] == g.usuario["id"]` (el id de la **sesión**) |
 | 2. Se quita el `not (...)`, se cambia `or` por `and` o se borra el `abort(404)` | todos ven todo, o nadie ve nada | leer las 3 líneas del `if` | dejar `if t is None or not (es_dueno or puede(...)):` seguido de `abort(404)` |
-| 3. Una ruta deja de usar la función y consulta directo: `consulta("SELECT * FROM trabajos WHERE id = %s", ...)` | solo esa ruta filtra datos | `grep -n "trabajo_id" app/rutas.py \| grep -v obtener_trabajo_autorizado` y `grep -n "FROM trabajos WHERE id" app/rutas.py` | reemplazar por `t = obtener_trabajo_autorizado(trabajo_id, "ver_todos")` (o `"descargar_todos"` en las descargas) |
+| 3. Una ruta deja de usar la función y consulta directo: `consulta("SELECT * FROM trabajos WHERE id = %s", ...)` | solo esa ruta filtra datos | `grep -n "obtener_trabajo_autorizado(trabajo_id" app/rutas.py` debe dar 6 líneas; `grep -n "SELECT \* FROM trabajos WHERE id" app/rutas.py` debe salir vacío | reemplazar por `t = obtener_trabajo_autorizado(trabajo_id, "ver_todos")` (o `"descargar_todos"` en las descargas) |
 
-Las rutas que deben usarla son detalle, descargar, original, eliminar, reprocesar y `api_trabajo`. Para verlas: `grep -n "obtener_trabajo_autorizado(" app/rutas.py`, que debe mostrar 6 líneas.
+Las rutas que deben usarla son detalle, descargar, original, eliminar, reprocesar y `api_trabajo`. Para verlas: `grep -n "obtener_trabajo_autorizado(trabajo_id" app/rutas.py`, que debe mostrar exactamente 6 líneas. Si muestra 5, una ruta dejó de usarla.
 
 Aplica con `docker compose up -d --build app`.
 
@@ -324,7 +325,12 @@ Ejemplo resuelto: **"los agricultores solo pueden enviar CSV, no TXT"**.
            return negar("solo_csv_para_agricultores", "Los agricultores solo pueden enviar archivos CSV.", 422)
        return PERMITIDO
    ```
-3. Verifica sin Docker: `python3 -m unittest pruebas/test_reglas_negocio.py`. Hay que ajustar una prueba, porque una de ellas comprueba que por defecto solo hay 2 reglas activas: o se agrega el nombre nuevo a ese conjunto, o la regla nueva se deja en `False` y se activa por `.env`.
+3. Verifica sin Docker: `python3 -m unittest pruebas/test_reglas_negocio.py`. Va a fallar **una sola** prueba, `test_por_defecto_solo_las_dos_reglas_originales_estan_activas`, porque documenta qué reglas están activas por defecto. Es lo esperado, y se arregla agregando el nombre nuevo al conjunto de esa prueba:
+   ```bash
+   grep -n '{"cuota_trabajos_activos", "bloquear_borrado_finalizados"}' pruebas/test_reglas_negocio.py
+   #   -> {"cuota_trabajos_activos", "bloquear_borrado_finalizados", "solo_csv_para_agricultores"}
+   ```
+   Otra opción es dejar la regla nueva en `False` y activarla por `.env`: así no falla nada.
 4. Aplica con `docker compose up -d --build app`.
 5. Demuestra: `agricultor1` sube `04_informe_visita_campo.txt` y recibe un mensaje claro (422); sube `01_suelos_lote_A.csv` y funciona; `tecnico1` sube el `.txt` y funciona. En Auditoría aparece `regla_solo_csv_para_agricultores` con resultado *denegado*.
 
