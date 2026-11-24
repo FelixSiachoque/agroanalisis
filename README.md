@@ -1,6 +1,6 @@
 # AgroAnálisis Sugamuxi · Plataforma segura de procesamiento de archivos
 
-Proyecto final de Sistemas Operativos (UPTC Sogamoso, 2026) · Docente: Mgtr. Fredy Alarcón
+Proyecto final de Sistemas Operativos - UPTC Sogamoso, 2026 · Docente: Mgtr. Fredy Alarcón
 
 **Integrantes:** Didier Cristancho · Derick Rios · Juan Salamanca · Felix Siachoque
 
